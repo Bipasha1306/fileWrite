@@ -1,5 +1,4 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencsv.CSVWriter;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -16,10 +15,10 @@ public class JsonToTabSeparatedTxtConverter {
             Map<String, Object> jsonMap = objectMapper.readValue(jsonString, Map.class);
 
             // Step 2: Flatten the nested map
-            Map<String, String> flatMap = flatten(jsonMap);
+            List<Map<String, String>> flatMaps = flatten(jsonMap);
 
             // Step 3: Write tab-separated text data to file
-            writeTabSeparatedTxtToFile("output.txt", flatMap);
+            writeTabSeparatedTxtToFile("output.txt", flatMaps);
 
             System.out.println("Tab-separated text file generated successfully.");
 
@@ -28,44 +27,50 @@ public class JsonToTabSeparatedTxtConverter {
         }
     }
 
-    private static Map<String, String> flatten(Map<String, Object> jsonMap) {
-        Map<String, String> flatMap = new LinkedHashMap<>();
-        flatten("", jsonMap, flatMap);
-        return flatMap;
+    private static List<Map<String, String>> flatten(Map<String, Object> jsonMap) {
+        List<Map<String, String>> flatMaps = new ArrayList<>();
+        flatten("", jsonMap, flatMaps, new LinkedHashMap<>());
+        return flatMaps;
     }
 
-    private static void flatten(String prefix, Map<String, Object> jsonMap, Map<String, String> flatMap) {
+    private static void flatten(String prefix, Map<String, Object> jsonMap, List<Map<String, String>> flatMaps, Map<String, String> currentFlatMap) {
         for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
             String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
             Object value = entry.getValue();
             if (value instanceof Map) {
-                flatten(key, (Map<String, Object>) value, flatMap);
+                flatten(key, (Map<String, Object>) value, flatMaps, currentFlatMap);
             } else if (value instanceof List) {
                 List<?> list = (List<?>) value;
                 for (int i = 0; i < list.size(); i++) {
-                    flatten(key + "[" + i + "]", (Map<String, Object>) list.get(i), flatMap);
+                    flatten(key + "[" + i + "]", (Map<String, Object>) list.get(i), flatMaps, new LinkedHashMap<>());
                 }
             } else {
-                flatMap.put(key, value == null ? "" : value.toString());
+                currentFlatMap.put(key, value == null ? "" : value.toString());
             }
+        }
+        if (!currentFlatMap.isEmpty()) {
+            flatMaps.add(new LinkedHashMap<>(currentFlatMap));
+            currentFlatMap.clear();
         }
     }
 
-    private static void writeTabSeparatedTxtToFile(String fileName, Map<String, String> flatMap) throws IOException {
+    private static void writeTabSeparatedTxtToFile(String fileName, List<Map<String, String>> flatMaps) throws IOException {
         try (FileWriter writer = new FileWriter(fileName)) {
             // Write headers
-            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+            for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
                 writer.write(entry.getKey());
-                writer.write("\t");
+                writer.write(",");
             }
             writer.write("\n");
 
             // Write values
-            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
-                writer.write(entry.getValue());
-                writer.write("\t");
+            for (Map<String, String> flatMap : flatMaps) {
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    writer.write(entry.getValue());
+                    writer.write(",");
+                }
+                writer.write("\n");
             }
-            writer.write("\n");
         }
     }
 }
