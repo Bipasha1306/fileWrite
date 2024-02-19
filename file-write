@@ -2,12 +2,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class JsonToTabSeparatedTxtConverter {
 
     public static void main(String[] args) {
-        String jsonString = "{\"name\": \"John\", \"age\": 30, \"address\": {\"city\": \"New York\", \"zip\": \"10001\"}, \"contacts\": [{\"type\": \"email\", \"value\": \"john@example.com\"}, {\"type\": \"phone\", \"value\": \"123456789\"}]}";
+        String jsonString = "{\"accountByIds\": [{\"accountId\": 23980, \"primarySystem\": {\"code\": 94881}, \"code\": \"11247\", \"longName\": \"11247 - 2 - long nm\", \"shortName\": \"11247 -2- short nm\", \"briefName\": \"11247 -2\", \"endDate\": \"\", \"startDate\": \"\"}, {\"accountId\": 129503, \"primarySystem\": {\"code\": 94}, \"code\": \"SSIA\",\"longName\": \"713601 - 2 - long nm\", \"shortName\": \"713601 -2- short nm\", \"briefName\": \"713601 -2\", \"endDate\": \"\", \"startDate\": \"\"}]}";
 
         try {
             // Step 1: Parse JSON into a Map<String, Object>
@@ -59,7 +62,7 @@ public class JsonToTabSeparatedTxtConverter {
             // Write headers
             for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
                 writer.write(entry.getKey());
-                writer.write(",");
+                writer.write("\t");
             }
             writer.write("\n");
 
@@ -67,7 +70,7 @@ public class JsonToTabSeparatedTxtConverter {
             for (Map<String, String> flatMap : flatMaps) {
                 for (Map.Entry<String, String> entry : flatMap.entrySet()) {
                     writer.write(entry.getValue());
-                    writer.write(",");
+                    writer.write("\t");
                 }
                 writer.write("\n");
             }
