@@ -36,6 +36,264 @@ public class JsonToTabSeparatedTxtConverter {
         return flatMaps;
     }
 
+
+{
+  "data": {
+    "accountByIds": [
+      {
+        "accountId": 23980,
+        "primarySystem": {
+          "code": "WSSL"
+        },
+        "code": "11247",
+        "longName": "11247 - 2 - long nm",
+        "shortName": "11247 -2- short nm",
+        "briefName": "11247 -2",
+        "endDate": null,
+        "startDate": "1997-11-19",
+        "endDateTime": null,
+        "comment": "Rebranded 13/09/05.",
+        "erisaReportingFlag": null,
+        "subBusinessSegment": {
+          "code": "MFOS"
+        },
+        "fundingEvent": {
+          "intendedFundingDate": null,
+          "date": null
+        },
+        "accountStatusType": {
+          "description": "desc",
+          "code": "A",
+          "name": "Active"
+        },
+        "accountHierarchyType": {
+          "code": "standalone",
+          "name": "Stand-alone"
+        },
+        "accountSubType": {
+          "accountType": {
+            "code": "int_fun",
+            "name": "Internal Fund"
+          },
+          "code": "int_fun_fun",
+          "name": "Fund",
+          "description": "Fund"
+        },
+        "accountProduct": {
+          "productStrategy": {
+            "productStrategyIdentifier": "d44d25e8115a4fe3bb9e68cb84a9ccd3"
+          }
+        },
+        "managementResponsibilityCenter": {
+          "code": "EQL",
+          "name": "Equity JPM London"
+        },
+        "investmentSubVehicle": {
+          "code": "SEPM",
+          "investmentVehicle": {
+            "code": "SEPM"
+          }
+        },
+        "profitabilityChannel": null,
+        "countryOfResidence": {
+          "code": "LU"
+        },
+        "investmentDecision": {
+          "code": "JPM",
+          "name": "Morgan IM Accounts"
+        },
+        "fundHierarchyType": {
+          "code": "STAN"
+        },
+        "lastUpdatedDate": "2022-11-29T21:15:21.923Z",
+        "spn": "2508346",
+        "partyCentralDetail": {
+          "spnCountryIsoCode": "LU",
+          "spnCountryName": "LUXEMBOURG"
+        },
+        "accountLegal": {
+          "fundManagerPartyId": 43157,
+          "erisa": "N",
+          "fundRegulatoryLawCd": {
+            "code": "13",
+            "name": "UCITS Lux"
+          },
+          "typeOfAgreement": null,
+          "contractCode": "JP",
+          "accountRole": {
+            "code": "IM",
+            "name": "Investment Manager"
+          },
+          "delegatedJpmRoleEntity": {
+            "code": "IM",
+            "name": "Investment Manager"
+          },
+          "delegatedJpmLegalEntity": {
+            "code": "JF",
+            "name": "JPMorgan Asset Management (Asia Pacific) Limited"
+          },
+          "subDelegatedJpmLegalEntity": null,
+          "legalClassification": {
+            "code": "SICA"
+          },
+          "discretionaryAuthority": {
+            "code": "1"
+          },
+          "stateLaw": null,
+          "stateResident": null,
+          "primaryJpmLegalEntity": {
+            "code": "JP",
+            "name": "J.P. Morgan Investment Management Inc."
+          },
+          "governingLawCountry": {
+            "code": "LU",
+            "name": "Luxembourg"
+          }
+        },
+        "performance": {
+          "eligibilityFl": "Y",
+          "benchmarkCd1": null
+        },
+        "accountCustodianNumber": "11247",
+        "parentAccountHierarchy": [],
+        "feeProcessingInfo": {
+          "performanceFee": null,
+          "billingBusinessUnit": null
+        },
+        "accountClient": [
+          {
+            "roleType": {
+              "code": "CLIE"
+            }
+          }
+        ]
+      },
+      {
+        "accountId": 129583,
+        "primarySystem": {
+          "code": "WSSL"
+        },
+        "code": "713601",
+        "longName": "713601 - 2 - long nm",
+        "shortName": "713601 -2- short nm",
+        "briefName": "713601 -2",
+        "endDate": "2013-12-27",
+        "startDate": "1998-10-26",
+        "endDateTime": "2013-12-27T10:16:00Z",
+        "comment": "Rebranded 13/9/05. Name change from JPM EUR Global Bond Fund to JPM Global Bond Fund (EUR) effective 29/08/06.",
+        "erisaReportingFlag": null,
+        "subBusinessSegment": {
+          "code": "MFOS"
+        },
+        "fundingEvent": {
+          "intendedFundingDate": null,
+          "date": null
+        },
+        "accountStatusType": {
+          "description": "desc",
+          "code": "CLOC",
+          "name": "Closed - Outside custody"
+        },
+        "accountHierarchyType": null,
+        "accountSubType": {
+          "accountType": {
+            "code": "int_acc",
+            "name": "Internal Account"
+          },
+          "code": "int_acc_none",
+          "name": "None",
+          "description": "None"
+        },
+        "accountProduct": {
+          "productStrategy": {
+            "productStrategyIdentifier": "EB3C4382952C319AE04396B759A9D03D"
+          }
+        },
+        "managementResponsibilityCenter": {
+          "code": "LOND",
+          "name": "JPM London"
+        },
+        "investmentSubVehicle": {
+          "code": "SEPM",
+          "investmentVehicle": {
+            "code": "SEPM"
+          }
+        },
+        "profitabilityChannel": null,
+        "countryOfResidence": {
+          "code": "LU"
+        },
+        "investmentDecision": {
+          "code": "JPM",
+          "name": "Morgan IM Accounts"
+        },
+        "fundHierarchyType": {
+          "code": "SUBF"
+        },
+        "lastUpdatedDate": "2018-10-22T19:44:03.963Z",
+        "spn": "2483343",
+        "partyCentralDetail": {
+          "spnCountryIsoCode": "LU",
+          "spnCountryName": "LUXEMBOURG"
+        },
+        "accountLegal": {
+          "fundManagerPartyId": null,
+          "erisa": "N",
+          "fundRegulatoryLawCd": null,
+          "typeOfAgreement": null,
+          "contractCode": "CFUK",
+          "accountRole": {
+            "code": "IM",
+            "name": "Investment Manager"
+          },
+          "delegatedJpmRoleEntity": {
+            "code": "NA",
+            "name": "N/A"
+          },
+          "delegatedJpmLegalEntity": {
+            "code": "NA",
+            "name": "N/A"
+          },
+          "subDelegatedJpmLegalEntity": null,
+          "legalClassification": {
+            "code": "SICA"
+          },
+          "discretionaryAuthority": {
+            "code": "1"
+          },
+          "stateLaw": null,
+          "stateResident": null,
+          "primaryJpmLegalEntity": {
+            "code": "CFUK",
+            "name": "JPMorgan Asset Management (UK) Limited"
+          },
+          "governingLawCountry": {
+            "code": "LU",
+            "name": "Luxembourg"
+          }
+        },
+        "performance": {
+          "eligibilityFl": "Y",
+          "benchmarkCd1": null
+        },
+        "accountCustodianNumber": "09984",
+        "parentAccountHierarchy": [],
+        "feeProcessingInfo": {
+          "performanceFee": null,
+          "billingBusinessUnit": null
+        },
+        "accountClient": [
+          {
+            "roleType": {
+              "code": "CLIE"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+
     private static void flatten(String prefix, Map<String, Object> jsonMap, List<Map<String, String>> flatMaps, Map<String, String> currentFlatMap) {
         for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
             String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
