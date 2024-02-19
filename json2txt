@@ -1,0 +1,30 @@
+
+To write the JSON string into a text file, you can modify the writeTabSeparatedTxtToFile method to write the JSON string directly. Here's the modified code:
+
+java
+Copy code
+import java.io.FileWriter;
+import java.io.IOException;
+
+public class JsonToTabSeparatedTxtConverter {
+
+    public static void main(String[] args) {
+        String jsonString = "";
+
+        try {
+            // Step 3: Write JSON string to file
+            writeJsonStringToFile("output.txt", jsonString);
+
+            System.out.println("JSON string written to file successfully.");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeJsonStringToFile(String fileName, String jsonString) throws IOException {
+        try (FileWriter writer = new FileWriter(fileName)) {
+            writer.write(jsonString);
+        }
+    }
+}
