@@ -1,0 +1,19 @@
+private static void writeTabSeparatedTxtToFile(String fileName, List<Map<String, String>> flatMaps) throws IOException {
+    try (FileWriter writer = new FileWriter(fileName)) {
+        // Write headers enclosed in double quotes
+        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+            writer.write("\"" + entry.getKey() + "\"");
+            writer.write("\t");
+        }
+        writer.write("\n");
+
+        // Write values enclosed in double quotes
+        for (Map<String, String> flatMap : flatMaps) {
+            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                writer.write("\"" + entry.getValue() + "\"");
+                writer.write("\t");
+            }
+            writer.write("\n");
+        }
+    }
+}
