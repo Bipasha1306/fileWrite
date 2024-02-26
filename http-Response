@@ -1,3 +1,8 @@
+Certainly! You can incorporate the modified AbcService logic within your downloadTabSeparatedTxt method. Here's how you can do it:
+
+java
+Copy code
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,20 +18,31 @@ import java.util.Map;
 @RequestMapping("/api")
 public class JsonToTabSeparatedTxtController {
 
+    @Autowired
+    private AbcService abcService;
+
     @GetMapping("/downloadTabSeparatedTxt")
     public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
         try {
             // Step 1: Parse JSON into a Map<String, Object>
             // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
 
-            // Step 2: Flatten the nested map
-            // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+            // Assume jsonString is your JSON input
+            String jsonString = "{ ... }";
 
-            // Step 3: Write tab-separated text data to byte array
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, Object> jsonMap = objectMapper.readValue(jsonString, Map.class);
+
+            // Step 2: Flatten the nested map
             List<Map<String, String>> flatMaps = flatten(jsonMap);
+
+            // Step 3: Generate tab-separated text file
             byte[] tabSeparatedTxtBytes = generateTabSeparatedTxtBytes(flatMaps);
 
-            // Step 4: Prepare the HTTP response
+            // Step 4: Save the file using the AbcService
+            abcService.loadData(jsonMap);
+
+            // Step 5: Prepare the HTTP response
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=output.txt");
             headers.add(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE);
@@ -42,24 +58,7 @@ public class JsonToTabSeparatedTxtController {
             return ResponseEntity.status(500).body(null);
         }
     }
-
-    private byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) throws IOException {
-        StringBuilder content = new StringBuilder();
-
-        // Write headers
-        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
-            content.append(entry.getKey()).append("\t");
-        }
-        content.append("\n");
-
-        // Write values
-        for (Map<String, String> flatMap : flatMaps) {
-            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
-                content.append(entry.getValue()).append("\t");
-            }
-            content.append("\n");
-        }
-
-        return content.toString().getBytes();
-    }
 }
+Make sure to adjust the AbcService logic to fit your specific needs and data processing requirements. In this example, the loadData method from AbcService is called to process and save the data, and then the tab-separated text file is generated and returned as a downloadable file in the HTTP response.
+
+Please replace the placeholder { ... } with your actual JSON input string.
