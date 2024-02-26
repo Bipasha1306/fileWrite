@@ -1,0 +1,73 @@
+To integrate this code with a Spring Boot application, you can create a Spring Boot controller to handle HTTP requests and use the existing logic to generate and return the tab-separated text file. Below is an example of how you can achieve this:
+
+```java
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api")
+public class JsonToTabSeparatedTxtController {
+
+    @GetMapping("/downloadTabSeparatedTxt")
+    public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
+        try {
+            // Step 1: Parse JSON into a Map<String, Object>
+            // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+            // Step 2: Flatten the nested map
+            // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+            // Step 3: Write tab-separated text data to byte array
+            List<Map<String, String>> flatMaps = flatten(jsonMap);
+            byte[] tabSeparatedTxtBytes = generateTabSeparatedTxtBytes(flatMaps);
+
+            // Step 4: Prepare the HTTP response
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=output.txt");
+            headers.add(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE);
+
+            // Return the byte array as a downloadable file
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(tabSeparatedTxtBytes);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Handle exception appropriately, e.g., return an error response
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    private byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) throws IOException {
+        StringBuilder content = new StringBuilder();
+
+        // Write headers
+        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+            content.append(entry.getKey()).append("\t");
+        }
+        content.append("\n");
+
+        // Write values
+        for (Map<String, String> flatMap : flatMaps) {
+            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                content.append(entry.getValue()).append("\t");
+            }
+            content.append("\n");
+        }
+
+        return content.toString().getBytes();
+    }
+}
+```
+
+In this example, the `downloadTabSeparatedTxt` endpoint is defined to trigger the generation and download of the tab-separated text file. The `generateTabSeparatedTxtBytes` method is responsible for converting the flattened maps into a byte array containing the tab-separated text.
+
+Remember to adapt this code according to your application's specific needs, such as handling exceptions, providing proper error responses, and adjusting the endpoint URL or method type based on your requirements.
