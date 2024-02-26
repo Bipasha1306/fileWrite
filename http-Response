@@ -1,6 +1,3 @@
-To integrate this code with a Spring Boot application, you can create a Spring Boot controller to handle HTTP requests and use the existing logic to generate and return the tab-separated text file. Below is an example of how you can achieve this:
-
-```java
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -66,8 +63,3 @@ public class JsonToTabSeparatedTxtController {
         return content.toString().getBytes();
     }
 }
-```
-
-In this example, the `downloadTabSeparatedTxt` endpoint is defined to trigger the generation and download of the tab-separated text file. The `generateTabSeparatedTxtBytes` method is responsible for converting the flattened maps into a byte array containing the tab-separated text.
-
-Remember to adapt this code according to your application's specific needs, such as handling exceptions, providing proper error responses, and adjusting the endpoint URL or method type based on your requirements.
