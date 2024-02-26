@@ -89,11 +89,14 @@ public class AbcService {
         return new byte[]{};
     }
 
-    public String saveToFile(byte[] tabSeparatedTxtBytes) throws IOException {
-        // Your existing logic to save the file to a specified directory
-        // ...
+   public String saveToFile(byte[] tabSeparatedTxtBytes) throws IOException {
+        String filePath = "/path/to/saved/file.txt"; // Replace with the actual file path
 
-        return "/path/to/saved/file.txt"; // Replace with the actual file path
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(tabSeparatedTxtBytes);
+        }
+
+        return filePath;
     }
 
     private static Map<String, Object> parseJson(String jsonString) throws IOException {
