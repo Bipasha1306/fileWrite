@@ -170,3 +170,40 @@ public class AbcService {
 
     // ... (other methods)
 }
+// double qoutes 
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+public class AbcService {
+
+    // ... (other methods)
+
+    public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            // Write headers
+            for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+                outputStream.write(("\"" + entry.getKey() + "\"\t").getBytes());
+            }
+            outputStream.write("\n".getBytes());
+
+            // Write values
+            for (Map<String, String> flatMap : flatMaps) {
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
+                }
+                outputStream.write("\n".getBytes());
+            }
+
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Handle exception appropriately, e.g., return an error response
+            return new byte[]{};
+        }
+    }
+
+    // ... (other methods)
+}
