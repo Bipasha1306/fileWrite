@@ -73,7 +73,17 @@ public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
         return ResponseEntity.status(500).body(null);
     }
 }
-response=$(curl -s -D - http://your-api-url/downloadTabSeparatedTxt -w "%{filename_effective}\n")
-filename=$(echo "$response" | sed -n 's/^\(.*\)\r$/\1/p')
+
+
+# Run the curl command and capture the filename
+response=$(curl -s -D - http://your-api-url/downloadTabSeparatedTxt -o output.txt)
+filename=$(echo "$response" | grep -i Content-Disposition | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
 echo "Downloaded file: $filename"
+
+# Create a file with the captured filename
+touch "$filename"
+
+# Move the file to a specific location (replace /path/to/destination with the desired location)
+mv "$filename" /path/to/destination/
+
 
