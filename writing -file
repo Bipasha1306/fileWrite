@@ -1,0 +1,11 @@
+response=$(curl -s -I -O http://your-api-url/downloadTabSeparatedTxt)
+filename=$(echo "$response" | grep -i Content-Disposition | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
+echo "Downloaded file: $filename"
+
+# Specify the target directory where you want to move the file
+target_directory="/path/to/your/directory"
+
+# Move the downloaded file to the target directory
+mv "$filename" "$target_directory"
+
+echo "File moved to: $target_directory/$filename"
