@@ -1,0 +1,38 @@
+import org.apache.commons.lang3.SystemUtils;
+
+// ...
+
+@GetMapping("/downloadTabSeparatedTxt")
+public ResponseEntity<?> downloadTabSeparatedTxt() {
+    try {
+        // Step 1: Parse JSON into a Map<String, Object>
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 2: Flatten the nested map
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 3: Generate tab-separated text file
+        List<Map<String, String>> flatMaps = flatten(jsonMap);
+        byte[] tabSeparatedTxtBytes = generateTabSeparatedTxtBytes(flatMaps);
+
+        if (SystemUtils.IS_OS_UNIX) {
+            // If running on Unix, return the file path in the response headers
+            String filePath = saveToFile(tabSeparatedTxtBytes);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=output.txt");
+            headers.add("X-File-Path", filePath);
+            return ResponseEntity.ok().headers(headers).build();
+        } else {
+            // If not on Unix, return the file content in the response body
+            String tabSeparatedTxtString = new String(tabSeparatedTxtBytes, StandardCharsets.UTF_8);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(tabSeparatedTxtString);
+        }
+
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return ResponseEntity.status(500).body("Error generating tab-separated text");
+    }
+}
