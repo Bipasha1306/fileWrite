@@ -40,3 +40,21 @@ save_response_to_file() {
 # Call the functions
 make_api_call
 save_response_to_file
+
+response=$(curl -s -D - http://your-api-url/downloadTabSeparatedTxt -w "%{filename_effective}\n")
+filename=$(echo "$response" | sed -n 's/^\(.*\)\r$/\1/p')
+echo "Downloaded file: $filename"
+
+# Check if the filename is not empty
+if [ -n "$filename" ]; then
+    # Create a file with the extracted filename
+    touch "$filename"
+
+    # Write the response content to the file
+    echo "$response" | sed '1,/^$/d' >> "$filename"
+
+    echo "Content written to file: $filename"
+else
+    echo "Error: Unable to determine filename."
+fi
+
