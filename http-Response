@@ -208,6 +208,15 @@ public class AbcService {
         }
     }
 
+// return as a striing
+// Convert the byte array to a String
+        String tabSeparatedTxtString = new String(tabSeparatedTxtBytes, StandardCharsets.UTF_8);
+
+        // Return the String as part of the response body
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(tabSeparatedTxtString);
+
     // ... (other methods)
 }
 log.info("File saved successfully at: {}", filePath);
