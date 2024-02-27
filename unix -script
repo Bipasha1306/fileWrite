@@ -58,3 +58,5 @@ else
     echo "Error: Unable to determine filename."
 fi
 
+filename=$(curl -sI http://your-api-url/downloadTabSeparatedTxt | grep -i Content-Disposition | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
+echo "Downloaded file: $filename"
