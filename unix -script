@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# API endpoint URL
+API_URL="https://api.example.com/data"
+
+# Directory to move the file to
+DESTINATION_DIR="/path/to/destination"
+
+# File path to save the API response
+OUTPUT_FILE="/path/to/output/response.txt"
+
+# Make API call and save response to file
+curl -s "$API_URL" > "$OUTPUT_FILE"
+
+# Check if the API call was successful (you may need to modify this based on your API response structure)
+if [ $? -eq 0 ]; then
+    echo "API call successful. Response saved to: $OUTPUT_FILE"
+
+    # Move the file to the destination directory
+    mv "$OUTPUT_FILE" "$DESTINATION_DIR/"
+
+    echo "File moved to: $DESTINATION_DIR/"
+else
+    echo "API call failed. Check the error and try again."
+fi
