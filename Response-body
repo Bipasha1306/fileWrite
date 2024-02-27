@@ -1,0 +1,34 @@
+@GetMapping("/downloadTabSeparatedTxt")
+public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
+    try {
+        // Step 1: Parse JSON into a Map<String, Object>
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 2: Flatten the nested map
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 3: Generate tab-separated text file
+        List<Map<String, String>> flatMaps = flatten(jsonMap);
+        byte[] tabSeparatedTxtBytes = generateTabSeparatedTxtBytes(flatMaps);
+
+        // Step 4: Prepare the HTTP response
+        HttpHeaders headers = new HttpHeaders();
+        
+        // Generate a dynamic filename (replace with your logic)
+        String dynamicFilename = "output_" + System.currentTimeMillis() + ".txt";
+        
+        // Set Content-Disposition header with the dynamic filename
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + dynamicFilename);
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE);
+
+        // Return the byte array as a downloadable file
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(tabSeparatedTxtBytes);
+
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return ResponseEntity.status(500).body(null);
+    }
+}
