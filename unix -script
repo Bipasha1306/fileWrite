@@ -1,25 +1,42 @@
 #!/bin/bash
 
-# API endpoint URL
-API_URL="https://api.example.com/data"
+# Function to make API call with authentication
+make_api_call() {
+    # API endpoint URL
+    API_URL="https://api.example.com/data"
 
-# Directory to move the file to
-DESTINATION_DIR="/path/to/destination"
+    # Add authentication headers if needed
+    AUTH_HEADERS="-H 'Authorization: Bearer YOUR_ACCESS_TOKEN'"
 
-# File path to save the API response
-OUTPUT_FILE="/path/to/output/response.txt"
+    # Make API call and save response to variable
+    API_RESPONSE=$(curl -s $AUTH_HEADERS $API_URL)
 
-# Make API call and save response to file
-curl -s "$API_URL" > "$OUTPUT_FILE"
+    # Check if the API call was successful
+    if [ $? -eq 0 ]; then
+        echo "API call successful."
+    else
+        echo "API call failed. Check the error and try again."
+        exit 1
+    fi
+}
 
-# Check if the API call was successful (you may need to modify this based on your API response structure)
-if [ $? -eq 0 ]; then
-    echo "API call successful. Response saved to: $OUTPUT_FILE"
+# Function to save API response to a file
+save_response_to_file() {
+    # File path to save the API response
+    OUTPUT_FILE="/path/to/output/response.txt"
 
-    # Move the file to the destination directory
-    mv "$OUTPUT_FILE" "$DESTINATION_DIR/"
+    # Save the API response to the file
+    echo "$API_RESPONSE" > "$OUTPUT_FILE"
 
-    echo "File moved to: $DESTINATION_DIR/"
-else
-    echo "API call failed. Check the error and try again."
-fi
+    # Check if the file was created successfully
+    if [ $? -eq 0 ]; then
+        echo "Response saved to: $OUTPUT_FILE"
+    else
+        echo "Failed to save the response to the file."
+        exit 1
+    fi
+}
+
+# Call the functions
+make_api_call
+save_response_to_file
