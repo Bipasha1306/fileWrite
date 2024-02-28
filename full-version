@@ -41,4 +41,13 @@ cp "$cleaned_filename" "test.txt"
 my "test.txt" "$cleaned filename"
 # Move the file to a specific location (replace /path/to/destination with the desired location)
 mv "$cleaned_filename" /apps/staging/fusion/MARS/EDPI/output/RADIX
-ChatGPT
+
+////
+response=$(curl -s -D - http://your-api-url/downloadTabSeparatedTxt)
+filename=$(echo "$response" | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
+
+# Remove headers from the response
+content=$(echo "$response" | sed -n '/^\s*$/,$p')
+
+# Save the content to a file
+echo "$content" > "$filename"
