@@ -41,3 +41,31 @@ public class YourClass {
     }
 }
 Map<String, String> eventTypeMap = getEventTypeMap(notificationRepository, entityAndFilterColumn);
+
+private static void writeTabSeparatedTxtToFile(String fileName, List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) throws IOException {
+    try (FileWriter writer = new FileWriter(fileName)) {
+        // Write headers including the new column for eventType
+        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+            writer.write(entry.getKey());
+            writer.write("\t");
+        }
+        writer.write("eventType"); // New column header
+        writer.write("\n");
+
+        // Write values
+        for (Map<String, String> flatMap : flatMaps) {
+            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                writer.write(entry.getValue());
+                writer.write("\t");
+            }
+
+            // Retrieve eventType based on the accountId
+            String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
+            String eventType = eventTypeMap.get(accountId) != null ? eventTypeMap.get(accountId).toString() : "";
+
+            writer.write(eventType); // Write eventType
+            writer.write("\n");
+        }
+    }
+}
+
