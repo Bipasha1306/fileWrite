@@ -1,0 +1,25 @@
+LOAD_URL=$(echo "$LOAD_URL" | tr -d '\r')
+LOAD_RESPONSE=$(curl -skw "\n\{http_code}\n" -H "Accept: text/plain" -H "Content-Type: text/plain" -H "Authorization: Bearer $final_access_token" -s $LOAD_URL)
+
+# Extract HTTP status code
+LOAD_STATUS=$(tail -n1 <<< "$LOAD_RESPONSE")
+
+# Remove headers from response content
+LOAD_RESPONSE_CONTENT=$(sed -n '/^$/,${p;/^$/!{N;s/\n//;b}}' <<< "$LOAD_RESPONSE")
+
+filename=$(echo "$LOAD_RESPONSE_CONTENT" | grep -i Content-Disposition | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
+sanitized_filename=$(echo "$filename" | tr -cd '[:alnum:]._')
+echo "Downloaded file: $sanitized_filename"
+
+# Clean up the filename (remove non-alphanumeric characters)
+cleaned_filename=$(echo "$sanitized_filename" | tr -cd '[:alnum:]._-' | tr -s '_')
+echo "Cleaned file: $cleaned_filename"
+
+# Save the content to the file
+echo "$LOAD_RESPONSE_CONTENT" > "$cleaned_filename"
+
+# Copy the file to "test.txt"
+cp "$cleaned_filename" "test.txt"
+
+# Move the file to a specific location (replace /path/to/destination with the desired location)
+mv "$cleaned_filename" /apps/staging/fusion/MARS/EDPI/output/RADIX
