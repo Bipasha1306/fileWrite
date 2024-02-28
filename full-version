@@ -27,3 +27,18 @@ cp "$sanitized_filename" "test.txt"
 
 # Move the file to a specific location (replace /path/to/destination with the desired location)
 mv "$sanitized_filename" /apps/staging/fusion/MARS/EDPI/output/RADIX
+
+
+//error stuff
+
+sanitized filename=$(echo "$filename" | tr -cd '[:alnum:]._')
+echo "Downloaded file: $sanitized filename"
+# Clean up the filename (remove non-alphanumeric characters)
+cleaned_filename=$(echo "$filename" | tr -cd '[:alnum:]._-' | tr -s
+echo "Cleaned file: $cleaned filename"
+echo "$LOAD RESPONSE" > "$cleaned filename"
+cp "$cleaned_filename" "test.txt"
+my "test.txt" "$cleaned filename"
+# Move the file to a specific location (replace /path/to/destination with the desired location)
+mv "$cleaned_filename" /apps/staging/fusion/MARS/EDPI/output/RADIX
+ChatGPT
