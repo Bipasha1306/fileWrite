@@ -67,3 +67,13 @@ sed -n '/^$/,${p;/^$/!{N;s/\n//;b}}' "$input_file" > "content_only.txt"
 
 filename=$(curl -sI http://your-api-url/downloadTabSeparatedTxt | grep -i Content-Disposition | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
 echo "Downloaded file: $filename"
+
+
+
+# Clean up the filename (remove non-alphanumeric characters)
+cleaned_filename=$(echo "$dynamic_filename" | tr -cd '[:alnum:]._-' | tr -s ' ' '_')
+
+# Use the cleaned filename in subsequent commands
+input_file="$cleaned_filename"
+sed -n '/^$/,$p' "$input_file" > "content_only.txt"
+
