@@ -62,7 +62,7 @@ fi
 input_file="output.txt"
 
 # Use sed to remove headers until the first empty line
-sed -n '/^$/,$p' "$input_file" > "content_only.txt"
+sed -n '/^$/,${p;/^$/!{N;s/\n//;b}}' "$input_file" > "content_only.txt"
 
 
 filename=$(curl -sI http://your-api-url/downloadTabSeparatedTxt | grep -i Content-Disposition | sed -n 's/.*filename=\([^ ]*\).*/\1/p')
