@@ -1,52 +1,42 @@
-Certainly! Here's the modified `getEntityAndFilterColumn` method along with the changes:
+import java.util.*;
 
-```java
-private static Map<String, String> getEntityAndFilterColumn(NotificationRepository notificationRepository) {
-    Map<String, String> entityAndFilterColumn = new HashMap<>();
+public class YourClass {
 
-    // Implement logic to dynamically obtain entityAndFilterColumn from the database
-    // Replace this with your specific logic based on the structure of your database and NotificationDetails class
+    private Map<String, Object> eventTypemap = new LinkedHashMap<>();
 
-    // For illustration, let's assume you want to extract accountId values
-    List<String> accountIds = notificationRepository.findAllDistinctAccountIds();
+    // Original method remains unchanged
+    public Map<String, Object> getFilters(Map<String, String> entityAndFilterColumn) {
+        Map<String, Object> result = new LinkedHashMap<>();
 
-    for (int i = 0; i < accountIds.size(); i++) {
-        String accountIdKey = "accountByIds[" + i + "].accountId";
-        entityAndFilterColumn.put(accountIdKey, "filter" + (i + 1));
+        entityAndFilterColumn.forEach((key, value) -> {
+            List<NotificationDetails> notificationDetailsList = notificationRepository.findAllByIsProcessedAndSourceSystemAndEntityName("N", "panda", key);
+            List<String> filters = new ArrayList<>();
+
+            notificationDetailsList.forEach(notificationDetails -> {
+                try {
+                    processNotificationDetails(notificationDetails, value, filters);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            result.put(value, filters);
+        });
+
+        return result;
     }
 
-    // Add more entries as needed
-    return entityAndFilterColumn;
-}
+    // New method to retrieve eventTypeMap
+    public Map<String, Object> getEventTypeMap() {
+        return eventTypemap;
+    }
 
-private static Map<String, String> getEventTypeMap(NotificationRepository notificationRepository) {
-    Map<String, String> eventTypeMap = new HashMap<>();
-
-    // Replace "panda" with your actual source system
-    String sourceSystem = "panda";
-
-    Map<String, String> entityAndFilterColumn = getEntityAndFilterColumn(notificationRepository);
-
-    entityAndFilterColumn.forEach((key, value) -> {
-        List<NotificationDetails> notificationDetailsList = notificationRepository.findAllByIsProcessedAndSourceSystemAndEntityName("N", sourceSystem, key);
-        List<String> filters = new ArrayList<>();
-        notificationDetailsList.forEach(notificationDetails -> {
-            try {
-                notificationDetails.getKeysAsMap().forEach((key2, value2) -> {
-                    if (value.equals(key2)) {
-                        eventTypeMap.put(value2, notificationDetails.getEventType());
-                        filters.add(value2);
-                    }
-                });
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+    private void processNotificationDetails(NotificationDetails notificationDetails, String value, List<String> filters) throws JsonProcessingException {
+        notificationDetails.getKeysAsMap().forEach((key2, value2) -> {
+            if (value.equals(key2)) {
+                eventTypemap.put(value2, notificationDetails.getEventType());
+                filters.add(value2);
             }
         });
-        eventTypeMap.put(value, String.join(",", filters));
-    });
-
-    return eventTypeMap;
+    }
 }
-```
-
-Now, you can call `getEventTypeMap(notificationRepository)` to get the `eventTypeMap`. Ensure you have an actual implementation for `findAllDistinctAccountIds()` and that it returns the distinct account IDs from your database. Adjust the code as needed based on your database structure and classes.
