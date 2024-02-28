@@ -76,4 +76,7 @@ cleaned_filename=$(echo "$dynamic_filename" | tr -cd '[:alnum:]._-' | tr -s ' ' 
 # Use the cleaned filename in subsequent commands
 input_file="$cleaned_filename"
 sed -n '/^$/,$p' "$input_file" > "content_only.txt"
+cp file1 file2   # Copy file1 to file2
+mv file2 file1   # Rename file2 to file1
+mv file1 /path/to/destination/  # Move file1 to the destination directory
 
