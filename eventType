@@ -40,3 +40,4 @@ public class YourClass {
         });
     }
 }
+Map<String, String> eventTypeMap = getEventTypeMap(notificationRepository, entityAndFilterColumn);
