@@ -1,35 +1,30 @@
-public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) {
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, String> eventTypeMap) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
         // Write headers
         for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
             outputStream.write(("\"" + entry.getKey() + "\"\t").getBytes());
         }
-        outputStream.write("\"eventType\"\t".getBytes()); // New column header for eventType
-        outputStream.write("\n".getBytes());
-
+        outputStream.write("\"eventType\"\t\n".getBytes()); // Adding a new column for eventType
         // Write values
         for (Map<String, String> flatMap : flatMaps) {
-            String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
-            String eventType = eventTypemap.get(accountId) != null ? eventTypemap.get(accountId) : "";
-
-            // Write accountId
-            outputStream.write(("\"" + accountId + "\"\t").getBytes());
-
-            // Conditionally handle eventType
-            if ("DELETE".equals(eventType)) {
-                // Write eventType for DELETE
-                outputStream.write(("\"" + eventType + "\"\t").getBytes());
-                outputStream.write("\"\"\t".getBytes()); // Leave other columns empty
-            } else {
-                // For other event types, write all values against each column
-                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                if (entry.getKey().equals("accountId")) {
+                    String eventType = eventTypeMap.get(entry.getValue());
+                    if ("DELETE".equals(eventType)) {
+                        outputStream.write(("\"" + entry.getValue() + "\"\t\"" + eventType + "\"\t").getBytes());
+                        for (int i = 1; i < flatMap.size(); i++) {
+                            outputStream.write("\"\"\t".getBytes()); // Empty column for DELETE event type
+                        }
+                        outputStream.write("\n".getBytes());
+                    } else {
+                        outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
+                    }
+                } else {
                     outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
                 }
             }
-
             outputStream.write("\n".getBytes());
         }
-
         log.info("Tab-separated text file generated successfully.");
         return outputStream.toByteArray();
     } catch (IOException e) {
