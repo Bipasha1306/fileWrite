@@ -17,11 +17,13 @@ public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) {
 
             // Conditionally handle eventType
             if ("DELETE".equals(eventType)) {
-                outputStream.write(("\"" + eventType + "\"\t").getBytes()); // Write eventType for DELETE
+                // Write eventType for DELETE
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+                outputStream.write("\"\"\t".getBytes()); // Leave other columns empty
             } else {
-                // For other event types, leave other columns empty
-                for (int i = 1; i < flatMap.size(); i++) {
-                    outputStream.write("\"\"\t".getBytes());
+                // For other event types, write all values against each column
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
                 }
             }
 
