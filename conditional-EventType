@@ -1,29 +1,32 @@
-public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) {
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
         // Write headers
         for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
             outputStream.write(("\"" + entry.getKey() + "\"\t").getBytes());
         }
-        outputStream.write("\"eventType\"\n".getBytes()); // Add the eventType header
+        outputStream.write("\"eventType\"\t".getBytes()); // New column header for eventType
+        outputStream.write("\n".getBytes());
 
         // Write values
         for (Map<String, String> flatMap : flatMaps) {
-            String accountIdColumnName = getAccountIdColumnName(); // Retrieve the dynamic column name for accountId
-            String eventType = eventTypemap.get(flatMap.get(accountIdColumnName)); // Get eventType based on the dynamic column
+            String eventType = getEventType(flatMap, eventTypeMap);
+
+            // For DELETE event type, only write accountId and eventType
             if ("DELETE".equals(eventType)) {
-                // For DELETE event type, only write accountId and eventType
-                outputStream.write(("\"" + flatMap.get(accountIdColumnName) + "\"\t").getBytes());
-                outputStream.write(("\"" + eventType + "\"\n").getBytes());
+                outputStream.write(("\"" + flatMap.get("accountId") + "\"\t").getBytes());
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
             } else {
                 // For other event types, write all columns
                 for (Map.Entry<String, String> entry : flatMap.entrySet()) {
                     outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
                 }
-                outputStream.write(("\"" + eventType + "\"\n").getBytes());
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
             }
+
+            outputStream.write("\n".getBytes());
         }
 
-        System.out.println("Tab-separated text file generated successfully.");
+        log.info("Tab-separated text file generated successfully.");
         return outputStream.toByteArray();
     } catch (IOException e) {
         e.printStackTrace();
@@ -32,8 +35,7 @@ public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) {
     }
 }
 
-private String getAccountIdColumnName() {
-    // Implement logic to obtain the dynamic column name for accountId
-    // For now, assuming the column name is "accountByIds[0].accountId"
-    return "accountByIds[0].accountId";
+private String getEventType(Map<String, String> flatMap, Map<String, Object> eventTypeMap) {
+    String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
+    return eventTypeMap.get(accountId) != null ? eventTypeMap.get(accountId).toString() : "";
 }
