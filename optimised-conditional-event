@@ -1,0 +1,45 @@
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        // Write headers
+        flatMaps.get(0).forEach((key, value) -> writeValue(outputStream, key));
+
+        // Add eventType header
+        outputStream.write("\"eventType\"\t".getBytes());
+        outputStream.write("\n".getBytes());
+
+        // Write values
+        flatMaps.forEach(flatMap -> {
+            String eventType = getEventType(flatMap, eventTypeMap);
+
+            // Write accountId and other columns based on conditions
+            writeValue(outputStream, flatMap.get("accountId"));
+            flatMap.forEach((key, value) -> {
+                if (!"accountId".equals(key)) {
+                    writeValue(outputStream, "DELETE".equals(eventType) ? "" : value);
+                }
+            });
+            writeValue(outputStream, eventType);
+            outputStream.write("\n".getBytes());
+        });
+
+        log.info("Tab-separated text file generated successfully.");
+        return outputStream.toByteArray();
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return new byte[]{};
+    }
+}
+
+private void writeValue(ByteArrayOutputStream outputStream, String value) {
+    try {
+        outputStream.write(("\"" + value + "\"\t").getBytes());
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+
+private String getEventType(Map<String, String> flatMap, Map<String, Object> eventTypeMap) {
+    String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
+    return eventTypeMap.getOrDefault(accountId, "").toString();
+}
