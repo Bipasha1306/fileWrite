@@ -1,3 +1,6 @@
+I see, for the "DELETE" event type, you want to write an empty string for columns other than "accountId". Here's the modified code to achieve that:
+
+```java
 public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
         // Write headers
@@ -11,9 +14,16 @@ public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, M
         for (Map<String, String> flatMap : flatMaps) {
             String eventType = getEventType(flatMap, eventTypeMap);
 
-            // For DELETE event type, only write accountId and eventType
+            // For DELETE event type, write accountId and empty strings for other columns
             if ("DELETE".equals(eventType)) {
                 outputStream.write(("\"" + flatMap.get("accountId") + "\"\t").getBytes());
+
+                // Write empty strings for other columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    if (!"accountId".equals(entry.getKey())) {
+                        outputStream.write("\"\"\t".getBytes());
+                    }
+                }
                 outputStream.write(("\"" + eventType + "\"\t").getBytes());
             } else {
                 // For other event types, write all columns
@@ -39,3 +49,6 @@ private String getEventType(Map<String, String> flatMap, Map<String, Object> eve
     String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
     return eventTypeMap.get(accountId) != null ? eventTypeMap.get(accountId).toString() : "";
 }
+```
+
+This modification ensures that for "DELETE" event types, empty strings are written for columns other than "accountId".
