@@ -43,3 +43,44 @@ private String getEventType(Map<String, String> flatMap, Map<String, Object> eve
     String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
     return eventTypeMap.getOrDefault(accountId, "").toString();
 }
+
+///explaination part
+
+Certainly! The lambda expressions and stream API are features introduced in Java 8 that simplify working with collections. Let's break down the relevant parts of the code that use lambda expressions and the stream API:
+
+1. **Header Writing using `forEach` and Lambda:**
+   ```java
+   flatMaps.get(0).forEach((key, value) -> writeValue(outputStream, key));
+   ```
+
+   - Here, `flatMaps.get(0)` is the first map in the `flatMaps` list.
+   - The `forEach` method is used to iterate over the entries of the map.
+   - The lambda expression `(key, value) -> writeValue(outputStream, key)` represents a function that takes a key-value pair and calls the `writeValue` method to write the key to the `ByteArrayOutputStream`.
+  
+2. **Event Type Retrieval using `getOrDefault`:**
+   ```java
+   return eventTypeMap.getOrDefault(accountId, "").toString();
+   ```
+
+   - The `getOrDefault` method is used on the `eventTypeMap` to retrieve the value associated with the given `accountId`.
+   - If the `accountId` is not present in the map, it returns an empty string `""`.
+   - `toString` is then called to ensure a non-null string representation.
+
+3. **Writing Values using `writeValue` method and Lambda:**
+   ```java
+   flatMap.forEach((key, value) -> {
+       if (!"accountId".equals(key)) {
+           writeValue(outputStream, "DELETE".equals(eventType) ? "" : value);
+       }
+   });
+   ```
+
+   - The `forEach` method is used to iterate over the entries of `flatMap`.
+   - The lambda expression iterates over key-value pairs.
+   - If the key is not "accountId," the `writeValue` method is called to write the value to the `ByteArrayOutputStream`.
+   - The value is conditionally set to an empty string for "DELETE" event type.
+
+4. **Using `stream` for Conciseness:**
+   - While the main logic doesn't heavily use streams, the usage of `forEach` with lambda expressions provides a more concise and expressive way to iterate over collections.
+
+The introduction of lambda expressions and the stream API improves the readability of the code by replacing traditional loops and providing a more functional programming style. Lambda expressions allow you to express instances of single-method interfaces (functional interfaces) more concisely, while the stream API provides a set of powerful methods for processing collections.
