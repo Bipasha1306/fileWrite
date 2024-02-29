@@ -10,15 +10,7 @@ public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, M
             for (Map.Entry<String, String> entry : flatMap.entrySet()) {
                 if (entry.getKey().equals("accountId")) {
                     String eventType = eventTypeMap.get(entry.getValue());
-                    if ("DELETE".equals(eventType)) {
-                        outputStream.write(("\"" + entry.getValue() + "\"\t\"" + eventType + "\"\t").getBytes());
-                        for (int i = 1; i < flatMap.size(); i++) {
-                            outputStream.write("\"\"\t".getBytes()); // Empty column for DELETE event type
-                        }
-                        outputStream.write("\n".getBytes());
-                    } else {
-                        outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
-                    }
+                    outputStream.write(("\"" + entry.getValue() + "\"\t\"" + (eventType != null ? eventType : "") + "\"\t").getBytes());
                 } else {
                     outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
                 }
