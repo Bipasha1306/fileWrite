@@ -1,4 +1,4 @@
-public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
         // Write headers
         for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
@@ -9,19 +9,20 @@ public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, M
 
         // Write values
         for (Map<String, String> flatMap : flatMaps) {
-            for (Map.Entry<String, String> entry : flatMap.entrySet()) {
-                outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
-            }
-
-            // Retrieve eventType based on the accountId
             String accountId = flatMap.get("accountId"); // Adjust this based on your actual key
-            String eventType = eventTypeMap.get(accountId) != null ? eventTypeMap.get(accountId).toString() : "";
+            String eventType = eventTypemap.get(accountId) != null ? eventTypemap.get(accountId) : "";
+
+            // Write accountId
+            outputStream.write(("\"" + accountId + "\"\t").getBytes());
 
             // Conditionally handle eventType
             if ("DELETE".equals(eventType)) {
-                outputStream.write("\"" + accountId + "\"\t".getBytes()); // Only write accountId
+                outputStream.write(("\"" + eventType + "\"\t").getBytes()); // Write eventType for DELETE
             } else {
-                outputStream.write(("\"" + eventType + "\"\t").getBytes()); // Write eventType
+                // For other event types, leave other columns empty
+                for (int i = 1; i < flatMap.size(); i++) {
+                    outputStream.write("\"\"\t".getBytes());
+                }
             }
 
             outputStream.write("\n".getBytes());
