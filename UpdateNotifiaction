@@ -94,3 +94,8 @@ public void updateNotificationTable(final List<Map<String, String>> flatMaps) {
         // Handle exception appropriately, e.g., log the error
     }
 }
+@Repository
+public interface NotificationRepository extends JpaRepository<NotificationDetails, String> {
+    List<NotificationDetails> findAllByIsProcessedAndSourceSystemAndAccountIdIgnoreCase(
+            String isProcessed, String sourceSystem, String accountId);
+}
