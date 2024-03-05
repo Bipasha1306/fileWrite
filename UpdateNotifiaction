@@ -116,3 +116,68 @@ private void updateIsProcessedFlag(String accountId, String eventType) {
         notificationRepository.save(notificationDetails);
     }
 }
+
+///3///
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        // Write headers
+        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+            outputStream.write(("\"" + entry.getKey() + "\"\t").getBytes());
+        }
+        outputStream.write("\"eventType\"\t".getBytes()); // New column header for eventType
+        outputStream.write("\n".getBytes());
+
+        // Write values
+        for (Map<String, String> flatMap : flatMaps) {
+            String eventType = getEventType(flatMap, eventTypeMap);
+
+            // For DELETE event type, write accountId and empty strings for other columns
+            if ("DELETE".equals(eventType)) {
+                String accountId = flatMap.get("accountId");
+                outputStream.write(("\"" + accountId + "\"\t").getBytes());
+
+                // Write empty strings for other columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    if (!"accountId".equals(entry.getKey())) {
+                        outputStream.write("\"\"\t".getBytes());
+                    }
+                }
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+
+                // Update isProcessed flag to "Y" for the processed accountId based on eventType
+                updateIsProcessedFlag(accountId, eventType);
+            } else {
+                // For other event types, write all columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
+                }
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+
+                // Update isProcessed flag to "Y" for the processed accountId based on eventType
+                updateIsProcessedFlag(flatMap.get("accountId"), eventType);
+            }
+
+            outputStream.write("\n".getBytes());
+        }
+
+        log.info("Tab-separated text file generated successfully.");
+        return outputStream.toByteArray();
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return new byte[]{};
+    }
+}
+
+private void updateIsProcessedFlag(String accountId, String eventType) {
+    // Fetch records based on eventType and ENTITY_NAME and update the isProcessed flag to "Y"
+    List<NotificationDetails> notificationDetailsList = notificationRepository
+            .findAllByIsProcessedAndSourceSystemAndEventTypeAndEntityName("N", "panda", eventType, "Account");
+
+    for (NotificationDetails notificationDetails : notificationDetailsList) {
+        // Update the isProcessed flag
+        notificationDetails.setIsProcessed("Y");
+        notificationRepository.save(notificationDetails);
+    }
+}
+
