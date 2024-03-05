@@ -1,0 +1,80 @@
+import java.util.List;
+import java.util.Map;
+
+public class YourClass {
+
+    private Map<String, Object> eventTypemap = new LinkedHashMap<>();
+    private NotificationRepository notificationRepository;
+
+    // Existing methods...
+
+    public void updateNotificationTable(List<Map<String, String>> flatMaps) {
+        try {
+            // Assume that generateTabSeparatedTxtBytes method is successful
+            // You can modify this condition based on your actual success criteria
+            boolean isSuccessful = true;
+
+            // Update isProcessed flag based on the success
+            for (Map<String, String> flatMap : flatMaps) {
+                String accountIdColumnName = getAccountIdColumnName(flatMaps);
+                String accountId = flatMap.get(accountIdColumnName);
+
+                List<NotificationDetails> notificationDetailsList = notificationRepository
+                        .findAllByIsProcessedAndSourceSystemAndEntityName("N", "panda", accountId);
+
+                for (NotificationDetails notificationDetails : notificationDetailsList) {
+                    notificationDetails.setIsProcessed(isSuccessful ? "Y" : "N");
+                    notificationRepository.save(notificationDetails);
+                }
+            }
+
+            System.out.println("Notification table updated successfully.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Handle exception appropriately, e.g., log the error
+        }
+    }
+
+    // Existing methods...
+
+    // Rest of the class...
+
+}
+@GetMapping("/downloadTabSeparatedTxt")
+public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
+    try {
+        // Step 1: Parse JSON into a Map<String, Object>
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 2: Flatten the nested map
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 3: Generate tab-separated text file
+        List<Map<String, String>> flatMaps = flatten(jsonMap);
+        byte[] tabSeparatedTxtBytes = generateTabSeparatedTxtBytes(flatMaps);
+
+        // Step 4: Update the Notification table based on success
+        YourClass yourObject = new YourClass();
+        yourObject.updateNotificationTable(flatMaps);
+
+        // Step 5: Prepare the HTTP response
+        HttpHeaders headers = new HttpHeaders();
+
+        // Generate a dynamic filename (replace with your logic)
+        String dynamicFilename = "output_" + System.currentTimeMillis() + ".txt";
+
+        // Set Content-Disposition header with the dynamic filename
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + dynamicFilename);
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM); // Set content type to binary
+
+        // Return the byte array as a downloadable file
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(tabSeparatedTxtBytes);
+
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return ResponseEntity.status(500).body(null);
+    }
+}
