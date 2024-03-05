@@ -35,24 +35,26 @@ public byte[] incrementalLoad(String queryName) throws IOException {
 2.byte[] flattenAndProcess(ResponseEntity<GraphqlResponse> responseEntity, final Map<String, String> eventTypeMap) throws IOException {
     GraphqlResponse graphqlResponse = responseEntity.getBody();
 
-    // Check if graphqlResponse is null or empty
-    if (graphqlResponse == null || graphqlResponse.getData() == null) {
-        // Return an empty byte array or handle it according to your requirements
+    // Check if graphqlResponse is null or empty, or if data is not a map
+    if (graphqlResponse == null || graphqlResponse.getData() == null || !(graphqlResponse.getData() instanceof Map)) {
         return new byte[0];
     }
 
     // Step 2: Flatten the nested map
-    List<Map<String, String>> flatMaps = flatten(graphqlResponse.getData(), "accountByIds");
+    List<Map<String, String>> flatMaps = flatten((Map<String, Object>) graphqlResponse.getData(), "accountByIds");
 
-    // Check if eventTypeMap is empty
-    if (eventTypeMap.isEmpty()) {
-        // If eventTypeMap is empty, pass an empty map to generateTabSeparatedTxtBytes
-        return generateTabSeparatedTxtBytes(flatMaps, Collections.emptyMap());
+    // Check if flatMaps is empty
+    if (flatMaps.isEmpty()) {
+        return new byte[0];
     }
 
+    // Check if eventTypeMap is empty and proceed accordingly
+    Map<String, Object> emptyEventTypeMap = eventTypeMap.isEmpty() ? Collections.emptyMap() : eventTypeMap;
+
     // Step 3: Write tab-separated text data to file
-    return generateTabSeparatedTxtBytes(flatMaps, eventTypeMap);
+    return generateTabSeparatedTxtBytes(flatMaps, emptyEventTypeMap);
 }
+
 
 3.public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
