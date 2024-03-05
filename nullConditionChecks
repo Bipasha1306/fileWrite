@@ -175,3 +175,27 @@ public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
         return ResponseEntity.status(500).body(null);
     }
 }
+
+5.
+private static List<Map<String, String>> flatten(Map<String, Object> jsonMap, String key) {
+    List<Map<String, String>> flatMaps = new ArrayList<>();
+
+    if (jsonMap.containsKey(key)) {
+        List<Map<String, Object>> accounts = (List<Map<String, Object>>) jsonMap.get(key);
+
+        // Check if 'accounts' is null
+        if (accounts == null) {
+            // Return an empty list if 'accounts' is null
+            return flatMaps;
+        }
+
+        for (Map<String, Object> account : accounts) {
+            Map<String, String> currentFlatMap = new LinkedHashMap<>();
+            flatten("", account, flatMaps, currentFlatMap);
+            flatMaps.add(currentFlatMap);
+        }
+    }
+
+    return flatMaps;
+}
+
