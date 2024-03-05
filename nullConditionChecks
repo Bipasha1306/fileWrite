@@ -36,11 +36,12 @@ public byte[] incrementalLoad(String queryName) throws IOException {
     GraphqlResponse graphqlResponse = responseEntity.getBody();
 
     // Check if graphqlResponse is null or empty, or if data is not a map
-    if (graphqlResponse == null || graphqlResponse.getData() == null || !(graphqlResponse.getData() instanceof Map)) {
+    if (graphqlResponse == null || graphqlResponse.getData() == null || !(graphqlResponse.getData() instanceof Map<?, ?>)) {
         return new byte[0];
     }
 
     // Step 2: Flatten the nested map
+    @SuppressWarnings("unchecked")
     List<Map<String, String>> flatMaps = flatten((Map<String, Object>) graphqlResponse.getData(), "accountByIds");
 
     // Check if flatMaps is empty
@@ -49,11 +50,12 @@ public byte[] incrementalLoad(String queryName) throws IOException {
     }
 
     // Check if eventTypeMap is empty and proceed accordingly
-    Map<String, Object> emptyEventTypeMap = eventTypeMap.isEmpty() ? Collections.emptyMap() : eventTypeMap;
+    Map<String, String> emptyEventTypeMap = eventTypeMap.isEmpty() ? Collections.emptyMap() : eventTypeMap;
 
     // Step 3: Write tab-separated text data to file
     return generateTabSeparatedTxtBytes(flatMaps, emptyEventTypeMap);
 }
+
 
 
 3.public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
