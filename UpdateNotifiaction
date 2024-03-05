@@ -1,149 +1,58 @@
-public class YourClass {
-    
-    private List<Map<String, String>> flatMaps; // Assuming flatMaps is a class field
-
-    // Your existing methods...
-
-    private String getAccountIdColumnName() {
-        // Implement your logic to obtain the dynamic column name for accountId
-        // This is just an example; you should replace it with your actual logic
-        return flatMaps.get(0).keySet().stream()
-                .filter(columnName -> columnName.contains("accountId"))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Account ID column not found in flat map"));
-    }
-
-    public void updateNotificationTable(List<Map<String, String>> flatMaps) {
-        try {
-            this.flatMaps = flatMaps; // Set flatMaps as a class field
-
-            // Assume that generateTabSeparatedTxtBytes method is successful
-            // You can modify this condition based on your actual success criteria
-            boolean isSuccessful = true;
-
-            // Update isProcessed flag based on the success
-            for (Map<String, String> flatMap : flatMaps) {
-                String accountIdColumnName = getAccountIdColumnName();
-                String accountId = flatMap.get(accountIdColumnName);
-
-                // Use proper logging for troubleshooting
-                System.out.println("Account ID: " + accountId);
-
-                List<NotificationDetails> notificationDetailsList = notificationRepository
-                        .findAllByIsProcessedAndSourceSystemAndEntityName("N", "panda", accountId);
-
-                // Log the size of the list for troubleshooting
-                System.out.println("NotificationDetailsList size: " + notificationDetailsList.size());
-
-                for (NotificationDetails notificationDetails : notificationDetailsList) {
-                    // Log information for each record being processed
-                    System.out.println("Processing NotificationDetails: " + notificationDetails.toString());
-
-                    // Update the isProcessed flag
-                    notificationDetails.setIsProcessed(isSuccessful ? "Y" : "N");
-                    notificationRepository.save(notificationDetails);
-                }
-            }
-
-            System.out.println("Notification table updated successfully.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            // Handle exception appropriately, e.g., log the error
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        // Write headers
+        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+            outputStream.write(("\"" + entry.getKey() + "\"\t").getBytes());
         }
-    }
-}
-???
+        outputStream.write("\"eventType\"\t".getBytes()); // New column header for eventType
+        outputStream.write("\n".getBytes());
 
-public void updateNotificationTable(final List<Map<String, String>> flatMaps) {
-    try {
-        // Assume that generateTabSeparatedTxtBytes method is successful
-        // You can modify this condition based on your actual success criteria
-        boolean isSuccessful = true;
-
-        // Update isProcessed flag based on the success
+        // Write values
         for (Map<String, String> flatMap : flatMaps) {
-            String accountIdColumnName = getAccountIdColumnName(flatMaps);
-            String accountId = flatMap.get(accountIdColumnName);
+            String eventType = getEventType(flatMap, eventTypeMap);
 
-            // Use proper logging for troubleshooting
-            System.out.println("Account ID: " + accountId);
+            // For DELETE event type, write accountId and empty strings for other columns
+            if ("DELETE".equals(eventType)) {
+                outputStream.write(("\"" + flatMap.get("accountId") + "\"\t").getBytes());
 
-            List<NotificationDetails> notificationDetailsList = notificationRepository
-                    .findAllByIsProcessedAndSourceSystemAndEntityName("N", "panda", accountId);
-
-            // Log query conditions for troubleshooting
-            System.out.println("Query Conditions: " +
-                    "IS_PROCESSED=N, SOURCE_SYSTEM=panda, ENTITY_NAME=" + accountId);
-
-            // Log the size of the list for troubleshooting
-            System.out.println("NotificationDetailsList size: " + notificationDetailsList.size());
-
-            for (NotificationDetails notificationDetails : notificationDetailsList) {
-                // Log information for each record being processed
-                System.out.println("Processing NotificationDetails: " + notificationDetails.toString());
-
-                // Update the isProcessed flag
-                notificationDetails.setIsProcessed(isSuccessful ? "Y" : "N");
-                notificationRepository.save(notificationDetails);
-            }
-        }
-
-        System.out.println("Notification table updated successfully.");
-    } catch (Exception e) {
-        e.printStackTrace();
-        // Handle exception appropriately, e.g., log the error
-    }
-}
-@Repository
-public interface NotificationRepository extends JpaRepository<NotificationDetails, String> {
-    List<NotificationDetails> findAllByIsProcessedAndSourceSystemAndAccountIdIgnoreCase(
-            String isProcessed, String sourceSystem, String accountId);
-}
-
-///
-
-public void updateNotificationTable(final List<Map<String, String>> flatMaps) {
-    try {
-        // Assume that generateTabSeparatedTxtBytes method is successful
-        // You can modify this condition based on your actual success criteria
-        boolean isSuccessful = true;
-
-        // Update isProcessed flag based on the success
-        for (Map<String, String> flatMap : flatMaps) {
-            String accountIdColumnName = getAccountIdColumnName(flatMaps);
-            String accountId = flatMap.get(accountIdColumnName);
-
-            // Use proper logging for troubleshooting
-            System.out.println("Account ID: " + accountId);
-
-            // Fetch records based on entityName
-            List<NotificationDetails> notificationDetailsList = notificationRepository
-                    .findAllByIsProcessedAndSourceSystemAndEntityName("N", "panda", accountId);
-
-            // Log query conditions for troubleshooting
-            System.out.println("Query Conditions: " +
-                    "IS_PROCESSED=N, SOURCE_SYSTEM=panda, ENTITY_NAME=" + accountId);
-
-            // Log the size of the list for troubleshooting
-            System.out.println("NotificationDetailsList size: " + notificationDetailsList.size());
-
-            for (NotificationDetails notificationDetails : notificationDetailsList) {
-                // Match by accountId within the loop
-                if (accountId.equals(notificationDetails.getEntityName())) {
-                    // Log information for each record being processed
-                    System.out.println("Processing NotificationDetails: " + notificationDetails.toString());
-
-                    // Update the isProcessed flag
-                    notificationDetails.setIsProcessed(isSuccessful ? "Y" : "N");
-                    notificationRepository.save(notificationDetails);
+                // Write empty strings for other columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    if (!"accountId".equals(entry.getKey())) {
+                        outputStream.write("\"\"\t".getBytes());
+                    }
                 }
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+            } else {
+                // For other event types, write all columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
+                }
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+
+                // Update isProcessed flag to "Y" for the processed accountId based on eventType
+                updateIsProcessedFlag(flatMap.get("accountId"), eventType);
             }
+
+            outputStream.write("\n".getBytes());
         }
 
-        System.out.println("Notification table updated successfully.");
-    } catch (Exception e) {
+        log.info("Tab-separated text file generated successfully.");
+        return outputStream.toByteArray();
+    } catch (IOException e) {
         e.printStackTrace();
-        // Handle exception appropriately, e.g., log the error
+        // Handle exception appropriately, e.g., return an error response
+        return new byte[]{};
     }
 }
 
+private void updateIsProcessedFlag(String accountId, String eventType) {
+    // Fetch records based on eventType and ENTITY_NAME and update the isProcessed flag to "Y"
+    List<NotificationDetails> notificationDetailsList = notificationRepository
+            .findAllByIsProcessedAndSourceSystemAndEventTypeAndEntityName("N", "panda", eventType, "Account");
+
+    for (NotificationDetails notificationDetails : notificationDetailsList) {
+        // Update the isProcessed flag
+        notificationDetails.setIsProcessed("Y");
+        notificationRepository.save(notificationDetails);
+    }
+}
