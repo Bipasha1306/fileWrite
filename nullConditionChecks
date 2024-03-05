@@ -1,0 +1,147 @@
+1.public byte[] incrementalLoad(String queryName) throws IOException {
+    // STEP-1: Get query from spring cloud config
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+
+    // Step-2 Get Filter from Notification table
+    Map<String, String> entityAndFilterColumn = baseService.getEntitiesAndFilterColumnsByQuery(queryName);
+    radixQueryProperties.orElseThrow(() -> new RuntimeException("RadixQueryProperties not found for queryName: " + queryName));
+
+    // Get Filters
+    Map<String, Object> filters = getFilters(entityAndFilterColumn);
+
+    // Get eventTypeMap
+    Map<String, String> eventTypeMap = getEventTypeMap();
+
+    // Return empty values if eventTypeMap is empty
+    if (eventTypeMap.isEmpty()) {
+        return flattenAndProcess(new ResponseEntity<>(new GraphqlResponse(), HttpStatus.OK), Collections.emptyMap());
+    }
+
+    // Step-4 Execute the query
+    ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), filters);
+
+    // Process the response
+    return flattenAndProcess(response, eventTypeMap);
+}
+
+2.byte[] flattenAndProcess(ResponseEntity<GraphqlResponse> responseEntity, final Map<String, String> eventTypeMap) throws IOException {
+    GraphqlResponse graphqlResponse = responseEntity.getBody();
+
+    // Check if graphqlResponse is null or empty
+    if (graphqlResponse == null || graphqlResponse.getData() == null) {
+        // Return an empty byte array or handle it according to your requirements
+        return new byte[0];
+    }
+
+    // Step 2: Flatten the nested map
+    List<Map<String, String>> flatMaps = flatten(graphqlResponse.getData(), "accountByIds");
+
+    // Check if eventTypeMap is empty
+    if (eventTypeMap.isEmpty()) {
+        // If eventTypeMap is empty, pass an empty map to generateTabSeparatedTxtBytes
+        return generateTabSeparatedTxtBytes(flatMaps, Collections.emptyMap());
+    }
+
+    // Step 3: Write tab-separated text data to file
+    return generateTabSeparatedTxtBytes(flatMaps, eventTypeMap);
+}
+
+3.public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        // Check if either flatMaps or eventTypeMap is empty, or both are empty
+        if ((flatMaps.isEmpty() && !eventTypeMap.isEmpty()) || (!flatMaps.isEmpty() && eventTypeMap.isEmpty()) || (flatMaps.isEmpty() && eventTypeMap.isEmpty())) {
+            log.info("Either flatMaps or eventTypeMap is empty, or both are empty. Returning an empty byte array.");
+            return new byte[0];
+        }
+
+        // Write headers
+        for (Map.Entry<String, String> entry : flatMaps.get(0).entrySet()) {
+            outputStream.write(("\"" + entry.getKey() + "\"\t").getBytes());
+        }
+        outputStream.write("\"eventType\"\t".getBytes()); // New column header for eventType
+        outputStream.write("\n".getBytes());
+
+        // Write values
+        for (Map<String, String> flatMap : flatMaps) {
+            String eventType = getEventType(flatMap, eventTypeMap);
+
+            // For DELETE event type, write accountId and empty strings for other columns
+            if ("DELETE".equals(eventType)) {
+                String accountId = flatMap.get("accountId");
+                outputStream.write(("\"" + accountId + "\"\t").getBytes());
+
+                // Write empty strings for other columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    if (!"accountId".equals(entry.getKey())) {
+                        outputStream.write("\"\"\t".getBytes());
+                    }
+                }
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+
+                // Update isProcessed flag to "Y" for the processed accountId based on eventType
+                updateIsProcessedFlag(accountId, eventType);
+            } else {
+                // For other event types, write all columns
+                for (Map.Entry<String, String> entry : flatMap.entrySet()) {
+                    outputStream.write(("\"" + entry.getValue() + "\"\t").getBytes());
+                }
+                outputStream.write(("\"" + eventType + "\"\t").getBytes());
+
+                // Update isProcessed flag to "Y" for the processed accountId based on eventType
+                updateIsProcessedFlag(flatMap.get("accountId"), eventType);
+            }
+
+            outputStream.write("\n".getBytes());
+        }
+
+        log.info("Tab-separated text file generated successfully.");
+        return outputStream.toByteArray();
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return new byte[]{};
+    }
+}
+
+4.@GetMapping("/downloadTabSeparatedTxt")
+public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
+    try {
+        // Step 1: Parse JSON into a Map<String, Object>
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 2: Flatten the nested map
+        // (Use the existing logic from the JsonToTabSeparatedTxtConverter class)
+
+        // Step 3: Generate tab-separated text file
+        List<Map<String, String>> flatMaps = flatten(jsonMap);
+        byte[] tabSeparatedTxtBytes = generateTabSeparatedTxtBytes(flatMaps);
+
+        // Check if tabSeparatedTxtBytes is null
+        if (tabSeparatedTxtBytes == null) {
+            // Handle the case where tabSeparatedTxtBytes is null
+            return ResponseEntity.ok()
+                    .headers(new HttpHeaders())
+                    .body(new byte[0]);
+        }
+
+        // Step 4: Prepare the HTTP response
+        HttpHeaders headers = new HttpHeaders();
+
+        // Generate a dynamic filename (replace with your logic)
+        String dynamicFilename = "output_" + System.currentTimeMillis() + ".txt";
+
+        // Set Content-Disposition header with the dynamic filename
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + dynamicFilename);
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE);
+
+        // Return the byte array as a downloadable file
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(tabSeparatedTxtBytes);
+
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return ResponseEntity.status(500).body(null);
+    }
+}
