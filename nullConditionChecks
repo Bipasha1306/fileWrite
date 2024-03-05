@@ -111,6 +111,24 @@ public byte[] incrementalLoad(String queryName) throws IOException {
     }
 }
 
+private void updateIsProcessedFlag(String accountId, String eventType) {
+    // Check if accountId is null
+    if (accountId == null) {
+        log.warn("accountId is null. Skipping updateIsProcessedFlag.");
+        return;
+    }
+
+    // Fetch records based on eventType and ENTITY_NAME and update the isProcessed flag to "Y"
+    List<NotificationDetails> notificationDetailsList = notificationRepository
+            .findAllByIsProcessedAndSourceSystemAndEventTypeAndEntityName("N", "panda", eventType, "Account");
+
+    for (NotificationDetails notificationDetails : notificationDetailsList) {
+        // Update the isProcessed flag
+        notificationDetails.setIsProcessed("Y");
+        notificationRepository.save(notificationDetails);
+    }
+}
+
 4.@GetMapping("/downloadTabSeparatedTxt")
 public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
     try {
