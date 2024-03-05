@@ -78,3 +78,7 @@ public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
         return ResponseEntity.status(500).body(null);
     }
 }
+private String getAccountIdColumnName() {
+    // Hardcode the column name for now
+    return "accountByIds[0].accountId";
+}
