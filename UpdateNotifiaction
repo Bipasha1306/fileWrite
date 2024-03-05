@@ -79,6 +79,40 @@ public ResponseEntity<byte[]> downloadTabSeparatedTxt() {
     }
 }
 private String getAccountIdColumnName() {
-    // Hardcode the column name for now
-    return "accountByIds[0].accountId";
+    // Implement your logic to obtain the dynamic column name for accountId
+    // This is just an example; you should replace it with your actual logic
+    return flatMaps.get(0).keySet().stream()
+            .filter(columnName -> columnName.contains("accountId"))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Account ID column not found in flat map"));
 }
+
+
+///
+public void updateNotificationTable(List<Map<String, String>> flatMaps) {
+    try {
+        // Assume that generateTabSeparatedTxtBytes method is successful
+        // You can modify this condition based on your actual success criteria
+        boolean isSuccessful = true;
+
+        // Update isProcessed flag based on the success
+        for (Map<String, String> flatMap : flatMaps) {
+            String accountIdColumnName = getAccountIdColumnName();
+            String accountId = flatMap.get(accountIdColumnName);
+
+            List<NotificationDetails> notificationDetailsList = notificationRepository
+                    .findAllByIsProcessedAndSourceSystemAndEntityName("N", "panda", accountId);
+
+            for (NotificationDetails notificationDetails : notificationDetailsList) {
+                notificationDetails.setIsProcessed(isSuccessful ? "Y" : "N");
+                notificationRepository.save(notificationDetails);
+            }
+        }
+
+        System.out.println("Notification table updated successfully.");
+    } catch (Exception e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., log the error
+    }
+}
+
