@@ -1,4 +1,12 @@
-1.public byte[] incrementalLoad(String queryName) throws IOException {
+1.
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.util.Collections;
+
+
+
+public byte[] incrementalLoad(String queryName) throws IOException {
     // STEP-1: Get query from spring cloud config
     Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
 
