@@ -1,0 +1,59 @@
+private static List<Map<String, String>> flatten(Map<String, Object> jsonMap, String key) {
+    List<Map<String, String>> flatMaps = new ArrayList<>();
+
+    if (jsonMap.containsKey(key)) {
+        List<Map<String, Object>> accounts = (List<Map<String, Object>>) jsonMap.get(key);
+
+        // Check if 'accounts' is null
+        if (accounts == null) {
+            // Return an empty list if 'accounts' is null
+            return flatMaps;
+        }
+
+        for (Map<String, Object> account : accounts) {
+            Map<String, String> currentFlatMap = new LinkedHashMap<>();
+            flattenResponseData("", account, account, currentFlatMap); // Using the provided version
+            flatMaps.add(currentFlatMap);
+        }
+    }
+
+    return flatMaps;
+}
+
+
+private void flattenResponseData(String prefix, Map<String, Object> queryMap, Map<String, Object> responseData, Map<String, String> flattenedMap) {
+    Set<String> responseKeys = responseData.keySet();
+
+    for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
+        String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
+        Object queryValue = entry.getValue();
+        Object responseValue = responseData.get(entry.getKey());
+
+        if (responseKeys.contains(entry.getKey())) {
+            if (queryValue instanceof Map && responseValue instanceof Map) {
+                flattenResponseData(key, (Map<String, Object>) queryValue, (Map<String, Object>) responseValue, flattenedMap);
+            } else if (queryValue instanceof List && responseValue instanceof List) {
+                List<Map<String, Object>> queryList = (List<Map<String, Object>>) queryValue;
+                List<Map<String, Object>> responseList = (List<Map<String, Object>>) responseValue;
+
+                for (int i = 0; i < queryList.size(); i++) {
+                    if (i < responseList.size()) {
+                        flattenResponseData(key + "[" + i + "]", queryList.get(i), responseList.get(i), flattenedMap);
+                    } else {
+                        flattenResponseData(key + "[" + i + "]", queryList.get(i), Collections.emptyMap(), flattenedMap);
+                    }
+                }
+            } else {
+                if (responseValue instanceof Map) {
+                    Map<String, Object> responseMap = (Map<String, Object>) responseValue;
+                    flattenResponseData(key, (Map<String, Object>) queryValue, responseMap, flattenedMap);
+                } else {
+                    flattenedMap.put(key, responseValue != null ? responseValue.toString() : null);
+                }
+            }
+        } else {
+            // If the response does not contain the key from the query, add it with null value
+            flattenedMap.put(key, null);
+        }
+    }
+}
