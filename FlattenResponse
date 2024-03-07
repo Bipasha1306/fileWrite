@@ -56,3 +56,39 @@ private static Map<String, String> createFlatMap(String key, Object value) {
     flatMap.put(key, value == null ? "null" : value.toString());
     return flatMap;
 }
+//
+public byte[] generateTabSeparatedTxtBytes(List<Map<String, String>> flatMaps, Map<String, Object> eventTypeMap) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        // Check if either flatMaps or eventTypeMap is empty, or both are empty
+        if ((flatMaps.isEmpty() && !eventTypeMap.isEmpty()) || (!flatMaps.isEmpty() && eventTypeMap.isEmpty()) || (flatMaps.isEmpty() && eventTypeMap.isEmpty())) {
+            log.info("Either flatMaps or eventTypeMap is empty, or both are empty. Returning an empty byte array.");
+            return new byte[0];
+        }
+
+        // Write headers based on the order of attributes in the original query
+        Set<String> headers = new LinkedHashSet<>();
+        for (Map<String, String> flatMap : flatMaps) {
+            headers.addAll(flatMap.keySet());
+        }
+
+        for (String header : headers) {
+            outputStream.write(("\"" + header + "\"\t").getBytes());
+        }
+        outputStream.write("\n".getBytes());
+
+        // Write values
+        for (Map<String, String> flatMap : flatMaps) {
+            for (String header : headers) {
+                outputStream.write(("\"" + flatMap.getOrDefault(header, "") + "\"\t").getBytes());
+            }
+            outputStream.write("\n".getBytes());
+        }
+
+        log.info("Tab-separated text file generated successfully.");
+        return outputStream.toByteArray();
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle exception appropriately, e.g., return an error response
+        return new byte[]{};
+    }
+}
