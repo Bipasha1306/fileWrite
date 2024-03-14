@@ -1,9 +1,145 @@
- Map<String, List<String>> selectionSetMap = parseGraphQLQuery(graphqlQuery);
+import graphql.language.*;
+
+import java.util.*;
+
+public class GraphQLParser {
+
+    public static void main(String[] args) {
+        String graphqlQuery = "query accountByIds { " +
+                "accountByIds(id: [129583, 23980]) { " +
+                "accountId " +
+                "primarySystem { " +
+                "code " +
+                "} " +
+                "code " +
+                "longName " +
+                "shortName " +
+                "briefName " +
+                "accountStatusType { " +
+                "code " +
+                "name " +
+                "} " +
+                "accountType { " +
+                "code " +
+                "name " +
+                "} " +
+                "startDate " +
+                "endDate " +
+                "fundingEvent { " +
+                "intendedFundingDate " +
+                "date " +
+                "} " +
+                "managementResponsibilityCenter { " +
+                "code " +
+                "name " +
+                "} " +
+                "investmentSubVehicle { " +
+                "code " +
+                "investmentVehicle { " +
+                "code " +
+                "} " +
+                "} " +
+                "profitabilityChannel { " +
+                "code " +
+                "name " +
+                "} " +
+                "accountLegal { " +
+                "primaryJpmLegalEntity { " +
+                "code " +
+                "name " +
+                "} " +
+                "discretionaryAuthority { " +
+                "code " +
+                "name " +
+                "} " +
+                "stateResident { " +
+                "code " +
+                "name " +
+                "} " +
+                "legalClassification { " +
+                "code " +
+                "name " +
+                "} " +
+                "delegatedJpmRoleEntity { " +
+                "code " +
+                "name " +
+                "} " +
+                "typeOfAgreement { " +
+                "code " +
+                "name " +
+                "} " +
+                "governingLawCountry { " +
+                "code " +
+                "name " +
+                "} " +
+                "delegatedJpmLegalEntity { " +
+                "code " +
+                "name " +
+                "} " +
+                "subDelegatedJpmLegalEntity { " +
+                "code " +
+                "name " +
+                "} " +
+                "} " +
+                "countryOfResidence { " +
+                "code " +
+                "} " +
+                "performance { " +
+                "benchmarkCd1Index { " +
+                "indexName " +
+                "} " +
+                "eligibilityFl " +
+                "} " +
+                "accountCustodianNumber " +
+                "lastUpdatedDate " +
+                "investmentDecision { " +
+                "code " +
+                "name " +
+                "} " +
+                "fundHierarchyType { " +
+                "code " +
+                "} " +
+                "accountSubType { " +
+                "code " +
+                "name " +
+                "description " +
+                "accountType { " +
+                "code " +
+                "name " +
+                "} " +
+                "} " +
+                "parentAccountHierarchy { " +
+                "parentAccount { " +
+                "investmentDecision { " +
+                "code " +
+                "} " +
+                "accountHierarchyType { " +
+                "code " +
+                "} " +
+                "primarySystem { " +
+                "code " +
+                "} " +
+                "accountSubType { " +
+                "code " +
+                "} " +
+                "accountStatusType { " +
+                "code " +
+                "} " +
+                "endDate " +
+                "subBusinessSegment { " +
+                "code " +
+                "} " +
+                "} " +
+                "} " +
+                "} " +
+                "}";
+
+        Map<String, Object> selectionSetMap = parseGraphQLQuery(graphqlQuery);
         printSelectionSetMap(selectionSetMap);
     }
 
-    private static Map<String, List<String>> parseGraphQLQuery(String query) {
-        Map<String, List<String>> selectionSetMap = new LinkedHashMap<>();
+    private static Map<String, Object> parseGraphQLQuery(String query) {
+        Map<String, Object> selectionSetMap = new LinkedHashMap<>();
         Document document = new io.altoviso.core.graphql.parser.Parser().parseDocument(query);
 
         for (Definition definition : document.getDefinitions()) {
@@ -16,25 +152,28 @@
         return selectionSetMap;
     }
 
-    private static void processSelectionSet(SelectionSet selectionSet, Map<String, List<String>> selectionSetMap) {
+    private static void processSelectionSet(SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
         for (Selection selection : selectionSet.getSelections()) {
             if (selection instanceof Field) {
                 Field field = (Field) selection;
                 String fieldName = field.getName();
-                List<String> subfields = new ArrayList<>();
+                Object fieldValue;
 
                 if (field.getSelectionSet() != null) {
-                    processSelectionSet(field.getSelectionSet(), selectionSetMap);
-                    subfields.addAll(selectionSetMap.get(fieldName));
+                    Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
+                    processSelectionSet(field.getSelectionSet(), nestedSelectionSetMap);
+                    fieldValue = nestedSelectionSetMap;
+                } else {
+                    fieldValue = Collections.emptyList();
                 }
 
-                selectionSetMap.put(fieldName, subfields);
+                selectionSetMap.put(fieldName, fieldValue);
             }
         }
     }
 
-    private static void printSelectionSetMap(Map<String, List<String>> selectionSetMap) {
-        for (Map.Entry<String, List<String>> entry : selectionSetMap.entrySet()) {
+    private static void printSelectionSetMap(Map<String, Object> selectionSetMap) {
+        for (Map.Entry<String, Object> entry : selectionSetMap.entrySet()) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
         }
     }
