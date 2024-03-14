@@ -1,4 +1,5 @@
 import graphql.language.*;
+import graphql.parser.*;
 
 import java.util.*;
 
@@ -43,6 +44,11 @@ public class GraphQLParser {
                 "code " +
                 "name " +
                 "} " +
+                "subBusinessSegment { " +
+                "code " +
+                "} " +
+                "comment " +
+                "spn " +
                 "accountLegal { " +
                 "primaryJpmLegalEntity { " +
                 "code " +
@@ -50,15 +56,12 @@ public class GraphQLParser {
                 "} " +
                 "discretionaryAuthority { " +
                 "code " +
-                "name " +
                 "} " +
                 "stateResident { " +
                 "code " +
-                "name " +
                 "} " +
                 "legalClassification { " +
                 "code " +
-                "name " +
                 "} " +
                 "delegatedJpmRoleEntity { " +
                 "code " +
@@ -77,6 +80,11 @@ public class GraphQLParser {
                 "name " +
                 "} " +
                 "subDelegatedJpmLegalEntity { " +
+                "code " +
+                "name " +
+                "} " +
+                "fundManagerPartyId " +
+                "fundRegulatoryLawCd { " +
                 "code " +
                 "name " +
                 "} " +
@@ -140,7 +148,8 @@ public class GraphQLParser {
 
     private static Map<String, Object> parseGraphQLQuery(String query) {
         Map<String, Object> selectionSetMap = new LinkedHashMap<>();
-        Document document = new io.altoviso.core.graphql.parser.Parser().parseDocument(query);
+        Parser parser = new Parser();
+        Document document = parser.parseDocument(query);
 
         for (Definition definition : document.getDefinitions()) {
             if (definition instanceof OperationDefinition) {
@@ -162,12 +171,25 @@ public class GraphQLParser {
                 if (field.getSelectionSet() != null) {
                     Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
                     processSelectionSet(field.getSelectionSet(), nestedSelectionSetMap);
-                    fieldValue = nestedSelectionSetMap;
+                    fieldValue = nestedSelectionSetMap.isEmpty() ? Collections.emptyList() : nestedSelectionSetMap;
                 } else {
                     fieldValue = Collections.emptyList();
                 }
 
-                selectionSetMap.put(fieldName, fieldValue);
+                if (selectionSetMap.containsKey(fieldName)) {
+                    Object existingValue = selectionSetMap.get(fieldName);
+                    if (existingValue instanceof List) {
+                        List<Object> existingList = (List<Object>) existingValue;
+                        existingList.add(fieldValue);
+                    } else {
+                        List<Object> newValueList = new ArrayList<>();
+                        newValueList.add(existingValue);
+                        newValueList.add(fieldValue);
+                        selectionSetMap.put(fieldName, newValueList);
+                    }
+                } else {
+                    selectionSetMap.put(fieldName, fieldValue);
+                }
             }
         }
     }
