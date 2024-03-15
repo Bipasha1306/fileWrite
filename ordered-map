@@ -1,0 +1,123 @@
+import graphql.language.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.*;
+
+public class GraphQLParser {
+
+    public static void main(String[] args) throws IOException {
+        String graphqlQuery = "query accountByIds { " +
+                "accountByIds(id: [129583, 23980]) { " +
+                "accountId " +
+                "profitabilityChannel { " +
+                "code " +
+                "name " +
+                "} " +
+                "} " +
+                "}";
+
+        Map<String, Object> selectionSetMap = parseGraphQLQuery(graphqlQuery);
+        System.out.println("Output Map from GraphQL Query:");
+        printSelectionSetMap(selectionSetMap);
+
+        String graphQLResponse = "{\n" +
+                "  \"data\": {\n" +
+                "    \"accountByIds\": [\n" +
+                "      {\n" +
+                "        \"accountId\": 23980,\n" +
+                "        \"profitabilityChannel\": null\n" +
+                "      },\n" +
+                "      {\n" +
+                "        \"accountId\": 129583,\n" +
+                "        \"profitabilityChannel\": {\n" +
+                "          \"code\": \"PC1\",\n" +
+                "          \"name\": \"Profit Channel 1\"\n" +
+                "        }\n" +
+                "      }\n" +
+                "    ]\n" +
+                "  }\n" +
+                "}";
+
+        updateOutputMap(selectionSetMap, graphQLResponse);
+        System.out.println("\nUpdated Output Map after validation and inserting values from the GraphQL response:");
+        printSelectionSetMap(selectionSetMap);
+    }
+
+    private static Map<String, Object> parseGraphQLQuery(String query) {
+        Map<String, Object> selectionSetMap = new LinkedHashMap<>();
+        Document document = new io.altoviso.core.graphql.parser.Parser().parseDocument(query);
+
+        for (Definition definition : document.getDefinitions()) {
+            if (definition instanceof OperationDefinition) {
+                SelectionSet selectionSet = ((OperationDefinition) definition).getSelectionSet();
+                processSelectionSet(selectionSet, selectionSetMap);
+            }
+        }
+
+        return selectionSetMap;
+    }
+
+    private static void processSelectionSet(SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
+        for (Selection selection : selectionSet.getSelections()) {
+            if (selection instanceof Field) {
+                Field field = (Field) selection;
+                String fieldName = field.getName();
+                Object fieldValue;
+
+                if (field.getSelectionSet() != null) {
+                    Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
+                    processSelectionSet(field.getSelectionSet(), nestedSelectionSetMap);
+                    fieldValue = nestedSelectionSetMap;
+                } else {
+                    fieldValue = getFieldValues(field);
+                }
+
+                selectionSetMap.put(fieldName, fieldValue);
+            }
+        }
+    }
+
+    private static Object getFieldValues(Field field) {
+        List<Object> fieldValues = new ArrayList<>();
+        fieldValues.add(null); // Handle null value for each field
+        return fieldValues;
+    }
+
+    private static void printSelectionSetMap(Map<String, Object> selectionSetMap) {
+        for (Map.Entry<String, Object> entry : selectionSetMap.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+    }
+
+    private static void updateOutputMap(Map<String, Object> selectionSetMap, String graphQLResponse) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode responseNode = objectMapper.readTree(graphQLResponse);
+        JsonNode dataNode = responseNode.get("data");
+        if (dataNode != null) {
+            JsonNode accountsNode = dataNode.get(getFirstKey(dataNode));
+            if (accountsNode != null && accountsNode.isArray()) {
+                for (JsonNode accountNode : accountsNode) {
+                    for (Iterator<Map.Entry<String, JsonNode>> fields = accountNode.fields(); fields.hasNext(); ) {
+                        Map.Entry<String, JsonNode> field = fields.next();
+                        String fieldName = field.getKey();
+                        Object fieldValue = field.getValue().isNull() ? null : field.getValue().asText();
+                        if (selectionSetMap.containsKey(fieldName)) {
+                            Object existingValue = selectionSetMap.get(fieldName);
+                            if (existingValue instanceof List && ((List<?>) existingValue).contains(null)) {
+                                ((List<Object>) existingValue).set(0, fieldValue);
+                            } else {
+                                selectionSetMap.put(fieldName, fieldValue);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static String getFirstKey(JsonNode node) {
+        Iterator<String> fieldNames = node.fieldNames();
+        return fieldNames.hasNext() ? fieldNames.next() : null;
+    }
+}
