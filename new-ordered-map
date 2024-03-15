@@ -157,3 +157,27 @@ private static boolean hasNonNullChild(Map<String, Object> map) {
     }
     return false;
 }
+////////////////////////////////////////////////////////
+
+// Method to update the output map with values from the GraphQL response
+private static void updateOutputMap(Map<String, Object> selectionSetMap, GraphqlResponse graphqlResponse) {
+    List<Map<String, Object>> accounts = (List<Map<String, Object>>) graphqlResponse.getData().get("accountByIds");
+    for (Map<String, Object> account : accounts) {
+        for (Map.Entry<String, Object> entry : account.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (value != null) {
+                if (value instanceof Map) {
+                    // Check if the value is a nested object
+                    updateOutputMap((Map<String, Object>) value, (Map<String, Object>) selectionSetMap.computeIfAbsent(key, k -> new LinkedHashMap<>()));
+                } else {
+                    // Insert non-null leaf node value
+                    selectionSetMap.put(key, value);
+                }
+            } else {
+                // Insert null leaf node value
+                selectionSetMap.putIfAbsent(key, null);
+            }
+        }
+    }
+}
