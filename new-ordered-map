@@ -48,7 +48,7 @@ public class GraphQLParser {
         for (Definition definition : document.getDefinitions()) {
             if (definition instanceof OperationDefinition) {
                 SelectionSet selectionSet = ((OperationDefinition) definition).getSelectionSet();
-                processSelectionSet(document.getDefinitions(), selectionSet, selectionSetMap);
+                processDefinitionSelectionSet(document.getDefinitions(), selectionSet, selectionSetMap);
             }
         }
 
@@ -56,7 +56,7 @@ public class GraphQLParser {
     }
 
     // Method to process the selection set in the GraphQL query for Definition
-    private static void processSelectionSet(List<Definition> definitions, SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
+    private static void processDefinitionSelectionSet(List<Definition> definitions, SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
         for (Selection selection : selectionSet.getSelections()) {
             if (selection instanceof Field) {
                 Field field = (Field) selection;
@@ -65,7 +65,7 @@ public class GraphQLParser {
 
                 if (field.getSelectionSet() != null) {
                     Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
-                    processSelectionSet(definitions, field.getSelectionSet(), nestedSelectionSetMap);
+                    processDefinitionSelectionSet(definitions, field.getSelectionSet(), nestedSelectionSetMap);
                     fieldValue = nestedSelectionSetMap;
                 } else {
                     fieldValue = getFieldValues(field);
@@ -77,7 +77,7 @@ public class GraphQLParser {
     }
 
     // Method to process the selection set in the GraphQL query for Selection
-    private static void processSelectionSet(List<Selection> selections, SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
+    private static void processSelectionSelectionSet(List<Selection> selections, SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
         for (Selection selection : selectionSet.getSelections()) {
             if (selection instanceof Field) {
                 Field field = (Field) selection;
@@ -86,7 +86,7 @@ public class GraphQLParser {
 
                 if (field.getSelectionSet() != null) {
                     Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
-                    processSelectionSet(selections, field.getSelectionSet(), nestedSelectionSetMap);
+                    processSelectionSelectionSet(selections, field.getSelectionSet(), nestedSelectionSetMap);
                     fieldValue = nestedSelectionSetMap;
                 } else {
                     fieldValue = getFieldValues(field);
