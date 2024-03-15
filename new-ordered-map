@@ -27,34 +27,40 @@ public class GraphQLParser {
 
         // Simulating obtaining the GraphQL response through a ResponseEntity<GraphqlResponse> object
         ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), filters);
+        System.out.println("\nResponse received:");
+        System.out.println(response.getBody());
 
-        // Flattening the GraphQL response JSON
-        Map<String, Object> flattenedResponse = flattenResponse(selectionSetMap, response.getBody().getData());
-
-        // Updating the output map with flattened values from the GraphQL response
-        updateOutputMap(selectionSetMap, flattenedResponse);
+        // Updating the output map with values from the GraphQL response
+        updateOutputMap(selectionSetMap, response.getBody());
         System.out.println("\nUpdated Output Map after validation and inserting values from the GraphQL response:");
         printSelectionSetMap(selectionSetMap);
+
+        // Flattening the output map
+        Map<String, Object> flattenedMap = flattenMap(selectionSetMap);
+        System.out.println("\nFlattened Output Map:");
+        printFlattenedMap(flattenedMap);
     }
 
     // Method to parse the GraphQL query and create an initial output map
     private static Map<String, Object> parseGraphQLQuery(String query) {
         Map<String, Object> selectionSetMap = new LinkedHashMap<>();
         Document document = new DocumentParser().parseDocument(query);
-
-        for (Definition definition : document.getDefinitions()) {
-            if (definition instanceof OperationDefinition) {
-                SelectionSet selectionSet = ((OperationDefinition) definition).getSelectionSet();
-                processSelectionSet(selectionSet, selectionSetMap);
-            }
-        }
-
+        processSelectionSet(document.getDefinitions(), selectionSetMap);
         return selectionSetMap;
     }
 
     // Method to process the selection set in the GraphQL query
-    private static void processSelectionSet(SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
-        for (Selection selection : selectionSet.getSelections()) {
+    private static void processSelectionSet(List<Definition> definitions, Map<String, Object> selectionSetMap) {
+        for (Definition definition : definitions) {
+            if (definition instanceof OperationDefinition) {
+                SelectionSet selectionSet = ((OperationDefinition) definition).getSelectionSet();
+                processSelectionSet(selectionSet.getSelections(), selectionSetMap);
+            }
+        }
+    }
+
+    private static void processSelectionSet(List<Selection> selections, Map<String, Object> selectionSetMap) {
+        for (Selection selection : selections) {
             if (selection instanceof Field) {
                 Field field = (Field) selection;
                 String fieldName = field.getName();
@@ -62,10 +68,10 @@ public class GraphQLParser {
 
                 if (field.getSelectionSet() != null) {
                     Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
-                    processSelectionSet(field.getSelectionSet(), nestedSelectionSetMap);
+                    processSelectionSet(field.getSelectionSet().getSelections(), nestedSelectionSetMap);
                     fieldValue = nestedSelectionSetMap;
                 } else {
-                    fieldValue = getFieldValues(field);
+                    fieldValue = null;
                 }
 
                 selectionSetMap.put(fieldName, fieldValue);
@@ -73,47 +79,78 @@ public class GraphQLParser {
         }
     }
 
-    // Method to obtain field values from the GraphQL query
-    private static Object getFieldValues(Field field) {
-        List<Object> fieldValues = new ArrayList<>();
-        fieldValues.add(null); // Handle null value for each field
-        return fieldValues;
-    }
-
-    // Method to flatten the GraphQL response JSON
-    private static Map<String, Object> flattenResponse(Map<String, Object> selectionSetMap, Map<String, Object> responseData) {
-        Map<String, Object> flattenedResponse = new LinkedHashMap<>();
-        flattenResponse(selectionSetMap, responseData, "", flattenedResponse);
-        return flattenedResponse;
-    }
-
-    private static void flattenResponse(Map<String, Object> selectionSetMap, Map<String, Object> responseData, String prefix, Map<String, Object> flattenedResponse) {
+    // Method to update the output map with values from the GraphQL response
+    private static void updateOutputMap(Map<String, Object> selectionSetMap, GraphqlResponse response) {
         for (Map.Entry<String, Object> entry : selectionSetMap.entrySet()) {
             String fieldName = entry.getKey();
-            Object fieldValue = entry.getValue();
-
-            if (fieldValue instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> subSelectionSetMap = (Map<String, Object>) fieldValue;
-                flattenResponse(subSelectionSetMap, (Map<String, Object>) responseData.get(fieldName), prefix + fieldName + ".", flattenedResponse);
-            } else {
-                flattenedResponse.put(prefix + fieldName, responseData.get(fieldName));
-            }
+            Object fieldValue = getFieldValue(fieldName, response);
+            entry.setValue(fieldValue);
         }
     }
 
-    // Method to update the output map with values from the GraphQL response
-    private static void updateOutputMap(Map<String, Object> selectionSetMap, Map<String, Object> flattenedResponse) {
-        for (Map.Entry<String, Object> entry : flattenedResponse.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            selectionSetMap.put(key, value);
+    private static Object getFieldValue(String fieldName, GraphqlResponse response) {
+        Map<String, Object> data = response.getData();
+        if (data != null) {
+            Object fieldValue = data.get(fieldName);
+            if (fieldValue instanceof List) {
+                List<?> fieldValues = (List<?>) fieldValue;
+                List<Object> validatedFieldValues = new ArrayList<>();
+                for (Object value : fieldValues) {
+                    if (value instanceof Map) {
+                        Map<?, ?> mapValue = (Map<?, ?>) value;
+                        validatedFieldValues.add(mapValue.isEmpty() ? null : mapValue);
+                    } else {
+                        validatedFieldValues.add(value);
+                    }
+                }
+                return validatedFieldValues;
+            } else if (fieldValue instanceof Map) {
+                Map<?, ?> mapValue = (Map<?, ?>) fieldValue;
+                return mapValue.isEmpty() ? null : mapValue;
+            } else {
+                return fieldValue;
+            }
+        }
+        return null;
+    }
+
+    // Method to flatten the output map
+    private static Map<String, Object> flattenMap(Map<String, Object> map) {
+        Map<String, Object> flattenedMap = new LinkedHashMap<>();
+        flattenMap("", map, flattenedMap);
+        return flattenedMap;
+    }
+
+    private static void flattenMap(String prefix, Map<String, Object> map, Map<String, Object> flattenedMap) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String fieldName = entry.getKey();
+            Object fieldValue = entry.getValue();
+            if (fieldValue instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> nestedMap = (Map<String, Object>) fieldValue;
+                flattenMap(prefix + fieldName + ".", nestedMap, flattenedMap);
+            } else if (fieldValue instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> listValue = (List<Object>) fieldValue;
+                for (int i = 0; i < listValue.size(); i++) {
+                    flattenedMap.put(prefix + fieldName + "[" + i + "]", listValue.get(i));
+                }
+            } else {
+                flattenedMap.put(prefix + fieldName, fieldValue);
+            }
         }
     }
 
     // Method to print the output map
     private static void printSelectionSetMap(Map<String, Object> selectionSetMap) {
         for (Map.Entry<String, Object> entry : selectionSetMap.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+    }
+
+    // Method to print the flattened map
+    private static void printFlattenedMap(Map<String, Object> flattenedMap) {
+        for (Map.Entry<String, Object> entry : flattenedMap.entrySet()) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
         }
     }
