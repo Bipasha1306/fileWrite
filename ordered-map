@@ -336,5 +336,137 @@ public class GraphQLParser {
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import graphql.language.*;
+import org.springframework.http.ResponseEntity;
+
+import java.io.IOException;
+import java.util.*;
+
+public class GraphQLParser {
+
+    public static void main(String[] args) throws IOException {
+        // Your GraphQL query string
+        String graphqlQuery = "query accountByIds { " +
+                "accountByIds(id: [129583, 23980]) { " +
+                "accountId " +
+                "profitabilityChannel { " +
+                "code " +
+                "name " +
+                "} " +
+                "} " +
+                "}";
+
+        // Parsing the GraphQL query to create an initial output map
+        Map<String, Object> selectionSetMap = parseGraphQLQuery(graphqlQuery);
+        System.out.println("Output Map from GraphQL Query:");
+        printSelectionSetMap(selectionSetMap);
+
+        // Simulating obtaining the GraphQL response through a ResponseEntity<GraphqlResponse> object
+        ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), filters);
+
+        // Extracting the GraphQL response JSON from the ResponseEntity<GraphqlResponse> object
+        GraphqlResponse graphqlResponse = response.getBody();
+
+        // Flattening the GraphQL response JSON
+        Map<String, Object> flattenedResponse = flattenResponse(graphqlResponse);
+
+        // Updating the output map with flattened values from the GraphQL response
+        updateOutputMap(selectionSetMap, flattenedResponse);
+        System.out.println("\nUpdated Output Map after validation and inserting values from the GraphQL response:");
+        printSelectionSetMap(selectionSetMap);
+    }
+
+    // Method to parse the GraphQL query and create an initial output map
+    private static Map<String, Object> parseGraphQLQuery(String query) {
+        Map<String, Object> selectionSetMap = new LinkedHashMap<>();
+        Document document = new DocumentParser().parseDocument(query);
+
+        for (Definition definition : document.getDefinitions()) {
+            if (definition instanceof OperationDefinition) {
+                SelectionSet selectionSet = ((OperationDefinition) definition).getSelectionSet();
+                processSelectionSet(selectionSet, selectionSetMap);
+            }
+        }
+
+        return selectionSetMap;
+    }
+
+    // Method to process the selection set in the GraphQL query
+    private static void processSelectionSet(SelectionSet selectionSet, Map<String, Object> selectionSetMap) {
+        for (Selection selection : selectionSet.getSelections()) {
+            if (selection instanceof Field) {
+                Field field = (Field) selection;
+                String fieldName = field.getName();
+                Object fieldValue;
+
+                if (field.getSelectionSet() != null) {
+                    Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
+                    processSelectionSet(field.getSelectionSet(), nestedSelectionSetMap);
+                    fieldValue = nestedSelectionSetMap;
+                } else {
+                    fieldValue = getFieldValues(field);
+                }
+
+                selectionSetMap.put(fieldName, fieldValue);
+            }
+        }
+    }
+
+    // Method to obtain field values from the GraphQL query
+    private static Object getFieldValues(Field field) {
+        List<Object> fieldValues = new ArrayList<>();
+        fieldValues.add(null); // Handle null value for each field
+        return fieldValues;
+    }
+
+    // Method to flatten the GraphQL response JSON
+    private static Map<String, Object> flattenResponse(GraphqlResponse graphqlResponse) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode dataNode = objectMapper.valueToTree(graphqlResponse.getData());
+        return flatten("", dataNode);
+    }
+
+    private static Map<String, Object> flatten(String prefix, JsonNode node) {
+        Map<String, Object> flattened = new LinkedHashMap<>();
+        if (node.isObject()) {
+            ObjectNode objectNode = (ObjectNode) node;
+            Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                flattened.putAll(flatten(prefix + entry.getKey() + ".", entry.getValue()));
+            }
+        } else if (node.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) node;
+            for (int i = 0; i < arrayNode.size(); i++) {
+                flattened.putAll(flatten(prefix + i + ".", arrayNode.get(i)));
+            }
+        } else {
+            flattened.put(prefix, node);
+        }
+        return flattened;
+    }
+
+    // Method to update the output map with values from the GraphQL response
+    private static void updateOutputMap(Map<String, Object> selectionSetMap, Map<String, Object> flattenedResponse) {
+        for (Map.Entry<String, Object> entry : flattenedResponse.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            selectionSetMap.put(key, value);
+        }
+    }
+
+    // Method to print the output map
+    private static void printSelectionSetMap(Map<String, Object> selectionSetMap) {
+        for (Map.Entry<String, Object> entry : selectionSetMap.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+    }
+}
+
+
 
 import graphql.parser.DocumentParser;
