@@ -1,6 +1,7 @@
 import graphql.language.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import graphql.parser.Parser;
 import java.io.IOException;
 import java.util.*;
 
@@ -46,7 +47,8 @@ public class GraphQLParser {
 
     private static Map<String, Object> parseGraphQLQuery(String query) {
         Map<String, Object> selectionSetMap = new LinkedHashMap<>();
-        Document document = new io.altoviso.core.graphql.parser.Parser().parseDocument(query);
+        Parser parser = new Parser();
+        Document document = parser.parseDocument(query);
 
         for (Definition definition : document.getDefinitions()) {
             if (definition instanceof OperationDefinition) {
