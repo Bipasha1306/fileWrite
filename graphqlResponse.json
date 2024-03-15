@@ -1,0 +1,226 @@
+{
+  "data": {
+    "accountByIds": [
+      {
+        "accountId": 23980,
+        "primarySystem": {
+          "code": "WSSL"
+        },
+        "code": "11247",
+        "longName": "11247 - 2 - long nm",
+        "shortName": "11247 -2- short nm",
+        "briefName": "11247 -2",
+        "accountStatusType": {
+          "code": "A",
+          "name": "Active"
+        },
+        "accountType": {
+          "code": "N"
+        },
+        "startDate": "1997-11-19",
+        "endDate": null,
+        "fundingEvent": {
+          "intendedFundingDate": null,
+          "date": null
+        },
+        "managementResponsibilityCenter": {
+          "code": "EQL",
+          "name": "Equity JPM London"
+        },
+        "investmentSubVehicle": {
+          "code": "SEPM",
+          "investmentVehicle": {
+            "code": "SEPM"
+          }
+        },
+        "profitabilityChannel": null,
+        "subBusinessSegment": {
+          "code": "MFOS"
+        },
+        "comment": "Rebranded 13/09/05.",
+        "spn": "2508346",
+        "accountLegal": {
+          "primaryJpmLegalEntity": {
+            "code": "JP",
+            "name": "J.P. Morgan Investment Management Inc."
+          },
+          "discretionaryAuthority": {
+            "code": "1"
+          },
+          "stateResident": null,
+          "legalClassification": {
+            "code": "SICA"
+          },
+          "delegatedJpmRoleEntity": {
+            "code": "IM",
+            "name": "Investment Manager"
+          },
+          "typeOfAgreement": null,
+          "governingLawCountry": {
+            "code": "LU",
+            "name": "Luxembourg"
+          },
+          "delegatedJpmLegalEntity": {
+            "code": "JF",
+            "name": "JPMorgan Asset Management (Asia Pacific) Limited"
+          },
+          "subDelegatedJpmLegalEntity": null,
+          "fundManagerPartyId": 43157,
+          "fundRegulatoryLawCd": {
+            "code": "13",
+            "name": "UCITS Lux"
+          }
+        },
+        "countryOfResidence": {
+          "code": "LU"
+        },
+        "performance": {
+          "benchmarkCd1Index": null,
+          "eligibilityFl": "Y"
+        },
+        "accountCustodianNumber": "11247",
+        "lastUpdatedDate": "2022-11-29T21:15:21.923Z",
+        "investmentDecision": {
+          "code": "JPM",
+          "name": "Morgan IM Accounts"
+        },
+        "fundHierarchyType": {
+          "code": "STAN"
+        },
+        "accountSubType": {
+          "code": "int_fun_fun",
+          "name": "Fund",
+          "description": "Fund",
+          "accountType": {
+            "code": "int_fun",
+            "name": "Internal Fund"
+          }
+        },
+        "accountHierarchyType": {
+          "code": "standalone",
+          "name": "Stand-alone"
+        },
+        "feeProcessingInfo": {
+          "billingBusinessUnit": null
+        },
+        "parentAccountHierarchy": [ ],
+        "erisaReportingFlag": null,
+        "accountTypeDetails": {
+          "planTypeCode": null
+        },
+        "lob": null,
+        "partyCentralDetail": {
+          "spnCountryIsoCode": "LU",
+          "spnCountryName": "LUXEMBOURG"
+        }
+      },
+      {
+        "accountId": 129583,
+        "primarySystem": {
+          "code": "WSSL"
+        },
+        "code": "713601",
+        "longName": "713601 - 2 - long nm",
+        "shortName": "713601 -2- short nm",
+        "briefName": "713601 -2",
+        "accountStatusType": {
+          "code": "CLOC",
+          "name": "Closed - Outside custody"
+        },
+        "accountType": {
+          "code": "A"
+        },
+        "startDate": "1998-10-26",
+        "endDate": "2013-12-27",
+        "fundingEvent": {
+          "intendedFundingDate": null,
+          "date": null
+        },
+        "managementResponsibilityCenter": {
+          "code": "LOND",
+          "name": "JPM London"
+        },
+        "investmentSubVehicle": {
+          "code": "SEPM",
+          "investmentVehicle": {
+            "code": "SEPM"
+          }
+        },
+        "profitabilityChannel": null,
+        "subBusinessSegment": {
+          "code": "MFOS"
+        },
+        "comment": "Rebranded 13/9/05. Name change from JPM EUR Global Bond Fund to JPM Global Bond Fund (EUR) effective 29/08/06.",
+        "spn": "2483343",
+        "accountLegal": {
+          "primaryJpmLegalEntity": {
+            "code": "CFUK",
+            "name": "JPMorgan Asset Management (UK) Limited"
+          },
+          "discretionaryAuthority": {
+            "code": "1"
+          },
+          "stateResident": null,
+          "legalClassification": {
+            "code": "SICA"
+          },
+          "delegatedJpmRoleEntity": {
+            "code": "NA",
+            "name": "N/A"
+          },
+          "typeOfAgreement": null,
+          "governingLawCountry": {
+            "code": "LU",
+            "name": "Luxembourg"
+          },
+          "delegatedJpmLegalEntity": {
+            "code": "NA",
+            "name": "N/A"
+          },
+          "subDelegatedJpmLegalEntity": null,
+          "fundManagerPartyId": null,
+          "fundRegulatoryLawCd": null
+        },
+        "countryOfResidence": {
+          "code": "LU"
+        },
+        "performance": {
+          "benchmarkCd1Index": null,
+          "eligibilityFl": "Y"
+        },
+        "accountCustodianNumber": "09984",
+        "lastUpdatedDate": "2018-10-22T19:44:03.963Z",
+        "investmentDecision": {
+          "code": "JPM",
+          "name": "Morgan IM Accounts"
+        },
+        "fundHierarchyType": {
+          "code": "SUBF"
+        },
+        "accountSubType": {
+          "code": "int_acc_none",
+          "name": "None",
+          "description": "None",
+          "accountType": {
+            "code": "int_acc",
+            "name": "Internal Account"
+          }
+        },
+        "accountHierarchyType": null,
+        "feeProcessingInfo": {
+          "billingBusinessUnit": null
+        },
+        "parentAccountHierarchy": [ ],
+        "erisaReportingFlag": null,
+        "accountTypeDetails": {
+          "planTypeCode": null
+        },
+        "lob": null,
+        "partyCentralDetail": {
+          "spnCountryIsoCode": "LU",
+          "spnCountryName": "LUXEMBOURG"
+        }
+      }
+    ]
+  }
+}
