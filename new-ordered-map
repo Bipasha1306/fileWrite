@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.language.*;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +10,7 @@ public class GraphQLParser {
     public static void main(String[] args) throws IOException {
         // Your GraphQL query string
         String graphqlQuery = "query accountByIds { " +
-                "accountByIds(id: [129583,23980]) { " +
+                "accountByIds(id: [129583, 23980]) { " +
                 "accountId " +
                 "primarySystem { " +
                 "code " +
@@ -61,9 +60,9 @@ public class GraphQLParser {
         printSelectionSetMap(selectionSetMap);
 
         // Simulating obtaining the GraphQL response through a ResponseEntity<GraphqlResponse> object
-        ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), filters);
+        ResponseEntity<GraphqlResponse> response = null; // Replace this with your actual response retrieval
 
-        // Extracting the GraphQL response from the ResponseEntity<GraphqlResponse> object
+        // Extracting the GraphQL response JSON from the ResponseEntity<GraphqlResponse> object
         GraphqlResponse graphqlResponse = response.getBody();
 
         // Updating the output map with values from the GraphQL response
@@ -80,7 +79,7 @@ public class GraphQLParser {
         for (Definition definition : document.getDefinitions()) {
             if (definition instanceof OperationDefinition) {
                 SelectionSet selectionSet = ((OperationDefinition) definition).getSelectionSet();
-                processSelectionSet(selectionSet, "", selectionSetMap);
+                processSelectionSet(selectionSet, "accountByIds", selectionSetMap);
             }
         }
 
@@ -92,15 +91,15 @@ public class GraphQLParser {
         for (Selection selection : selectionSet.getSelections()) {
             if (selection instanceof Field) {
                 Field field = (Field) selection;
-                String fieldName = prefix + field.getName();
+                String fieldName = prefix + "." + field.getName();
                 Object fieldValue;
 
                 if (field.getSelectionSet() != null) {
                     Map<String, Object> nestedSelectionSetMap = new LinkedHashMap<>();
-                    processSelectionSet(field.getSelectionSet(), fieldName + ".", nestedSelectionSetMap);
+                    processSelectionSet(field.getSelectionSet(), fieldName, nestedSelectionSetMap);
                     fieldValue = nestedSelectionSetMap;
                 } else {
-                    fieldValue = null; // Placeholder for field values
+                    fieldValue = new ArrayList<>(); // Initialize with empty list for leaf nodes
                 }
 
                 selectionSetMap.put(fieldName, fieldValue);
@@ -115,7 +114,33 @@ public class GraphQLParser {
             for (Map.Entry<String, Object> entry : account.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                selectionSetMap.put(key, value);
+                if (value != null) {
+                    if (value instanceof Map) {
+                        // Process nested objects recursively
+                        Map<String, Object> nestedMap = (Map<String, Object>) value;
+                        updateNestedMap(selectionSetMap, nestedMap, key);
+                    } else {
+                        // Update leaf nodes
+                        selectionSetMap.put(key, value);
+                    }
+                }
+            }
+        }
+    }
+
+    // Method to update nested objects recursively
+    private static void updateNestedMap(Map<String, Object> selectionSetMap, Map<String, Object> nestedMap, String prefix) {
+        for (Map.Entry<String, Object> entry : nestedMap.entrySet()) {
+            String key = prefix + "." + entry.getKey();
+            Object value = entry.getValue();
+            if (value != null) {
+                if (value instanceof Map) {
+                    // Process nested objects recursively
+                    updateNestedMap(selectionSetMap, (Map<String, Object>) value, key);
+                } else {
+                    // Update leaf nodes
+                    selectionSetMap.put(key, value);
+                }
             }
         }
     }
@@ -127,62 +152,3 @@ public class GraphQLParser {
         }
     }
 }
-
-
-/////////////////////////
-
-// Method to update the output map with values from the GraphQL response
-private static void updateOutputMap(Map<String, Object> selectionSetMap, GraphqlResponse graphqlResponse) {
-    List<Map<String, Object>> accounts = (List<Map<String, Object>>) graphqlResponse.getData().get("accountByIds");
-    for (Map<String, Object> account : accounts) {
-        for (Map.Entry<String, Object> entry : account.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            if (value != null || hasNonNullChild((Map<String, Object>) value)) {
-                selectionSetMap.put(key, value);
-            }
-        }
-    }
-}
-
-// Method to check if a map has any non-null child values
-private static boolean hasNonNullChild(Map<String, Object> map) {
-    if (map == null) {
-        return false;
-    }
-    for (Object value : map.values()) {
-        if (value != null) {
-            return true;
-        }
-    }
-    return false;
-}
-////////////////////////////////////////////////////////
-
-// Method to update the output map with values from the GraphQL response
-// Method to update the output map with values from the GraphQL response
-private static void updateOutputMap(Map<String, Object> selectionSetMap, GraphqlResponse graphqlResponse) {
-    List<Map<String, Object>> accounts = (List<Map<String, Object>>) graphqlResponse.getData().get("accountByIds");
-    for (Map<String, Object> account : accounts) {
-        Map<String, Object> currentMap = selectionSetMap;
-        for (Map.Entry<String, Object> entry : account.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            if (value != null) {
-                if (value instanceof Map) {
-                    // Check if the value is a nested object
-                    currentMap.putIfAbsent(key, new LinkedHashMap<>());
-                    currentMap = (Map<String, Object>) currentMap.get(key);
-                    currentMap.putAll((Map<String, Object>) value);
-                } else {
-                    // Insert non-null leaf node value
-                    currentMap.put(key, value);
-                }
-            } else {
-                // Insert null leaf node value
-                currentMap.putIfAbsent(key, null);
-            }
-        }
-    }
-}
-
