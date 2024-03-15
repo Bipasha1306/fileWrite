@@ -115,8 +115,23 @@ public class GraphQLParser {
         for (Map.Entry<String, Object> entry : flattenedResponse.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
-            selectionSetMap.put(key, value);
+
+            // Adjust key to match the structure in selectionSetMap
+            String adjustedKey = adjustKey(key, selectionSetMap.keySet());
+            if (adjustedKey != null) {
+                selectionSetMap.put(adjustedKey, value);
+            }
         }
+    }
+
+    // Method to adjust the key to match the structure in selectionSetMap
+    private static String adjustKey(String key, Set<String> selectionSetMapKeys) {
+        for (String mapKey : selectionSetMapKeys) {
+            if (key.startsWith(mapKey)) {
+                return mapKey; // Return the matched key
+            }
+        }
+        return null; // No matching key found
     }
 
     // Method to print the output map
