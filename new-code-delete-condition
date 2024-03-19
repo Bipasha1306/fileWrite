@@ -1,0 +1,61 @@
+ /**
+     * Stores data from JSON response into a StringWriter.
+     *
+     * @param jsonResponse  The JSON response string.
+     * @param keys          The list of keys to extract data from JSON.
+     * @param map           A map containing event types for each account ID.
+     * @param stringWriter  The StringWriter to store the data.
+     * @throws IOException  If an I/O error occurs.
+     */
+    public static void storeDataInTXT(String jsonResponse, List<String> keys, Map<String, Object> map, StringWriter stringWriter) throws IOException {
+        // Parse JSON data
+        JSONObject jsonObject = new JSONObject(jsonResponse);
+        JSONArray accountByIds = jsonObject.getJSONObject("data").getJSONArray("accountByIds");
+
+        // Append "eventType" to the keys list
+        List<String> modifiedKeys = new ArrayList<>(keys);
+        modifiedKeys.add("eventType");
+
+        // Write data to text file
+        stringWriter.write(String.join("\t", modifiedKeys));
+        stringWriter.write("\n");
+
+        for (int i = 0; i < accountByIds.length(); i++) {
+            JSONObject account = accountByIds.getJSONObject(i);
+            List<String> values = new ArrayList<>();
+            // Check if eventType is "Delete" for the current account ID
+            String accountId = account.optString("accountId");
+            String eventType = map.getOrDefault(accountId, "").toString();
+            if ("Delete".equals(eventType)) {
+                // Write only the accountId and empty strings for other columns
+                values.add("\"" + accountId + "\"");
+                for (int j = 0; j < keys.size() - 1; j++) { // Exclude eventType column
+                    values.add("\"\"");
+                }
+                // Append eventType as "Delete"
+                values.add("\"Delete\"");
+            } else {
+                // Write values for all columns
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    Object value = getValue(account, nestedKeys);
+                    // Enclose all values within double quotes
+                    String valueString = (value != null) ? "\"" + value.toString() + "\"" : "\"\"";
+                    values.add(valueString);
+                }
+                // Append eventType to values
+                String eventTypeString = (eventType != null) ? "\"" + eventType + "\"" : "\"\"";
+                values.add(eventTypeString);
+            }
+            // Write values
+            stringWriter.write(String.join("\t", values));
+            stringWriter.write("\n");
+        }
+
+
+        System.out.println("Data has been written to StringWriter");
+
+        // Print the result
+        String result = stringWriter.toString();
+        System.out.println("Result:\n" + result);
+    }
