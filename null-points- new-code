@@ -1,0 +1,37 @@
+
+//This is related to the new Chnage for the "" in nulls 
+
+
+ /**
+     * Recursively gets nested values from a JSON object.
+     *
+     * @param jsonObject The JSON object.
+     * @param keys       The array of keys representing the nested structure.
+     * @return The value obtained from the JSON object.
+     */
+    private static Object getValue(JSONObject jsonObject, String[] keys) {
+        JSONObject currentObject = jsonObject;
+        for (String key : keys) {
+            if (!currentObject.has(key)) {
+                return ""; // Return empty string for missing keys
+            }
+            Object value = currentObject.get(key);
+            if (value instanceof JSONObject) {
+                currentObject = (JSONObject) value;
+            } else if (value instanceof JSONArray) {
+                // Handle case where key represents an empty array
+                JSONArray jsonArray = (JSONArray) value;
+                if (jsonArray.isEmpty()) {
+                    return ""; // Return empty string for empty arrays
+                } else {
+                    // Assuming there's only one object in the array
+                    currentObject = jsonArray.getJSONObject(0);
+                }
+            } else if (value == JSONObject.NULL) {
+                return ""; // Return empty string for JSON null values
+            } else {
+                return value;
+            }
+        }
+        return currentObject;
+    }
