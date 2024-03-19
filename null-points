@@ -31,3 +31,46 @@
         }
         return currentObject;
     }
+//////////////////////
+public static void storeDataInTXT(String jsonResponse, List<String> keys, Map<String, Object> map, StringWriter stringWriter) throws IOException {
+        // Parse JSON data
+        JSONObject jsonObject = new JSONObject(jsonResponse);
+        JSONArray accountByIds = jsonObject.getJSONObject("data").getJSONArray("accountByIds");
+
+        // Append "eventType" to the keys list
+        List<String> modifiedKeys = new ArrayList<>(keys);
+        modifiedKeys.add("eventType");
+
+        // Write data to text file
+        stringWriter.write(String.join("\t", modifiedKeys));
+        stringWriter.write("\n");
+
+        for (int i = 0; i < accountByIds.length(); i++) {
+            JSONObject account = accountByIds.getJSONObject(i);
+            List<String> values = new ArrayList<>();
+            for (String key : keys) {
+                String[] nestedKeys = key.split("\\.");
+                Object value = getValue(account, nestedKeys);
+                if (value instanceof String) {
+                    values.add("\"" + value + "\"");
+                } else {
+                    values.add(value != null ? value.toString() : "");
+                }
+            }
+            // Extract eventType
+            String accountId = account.optString("accountId");
+            String eventType = map.getOrDefault(accountId, "").toString();
+
+            // Append eventType to values
+            values.add(eventType);
+
+            // Write values
+            stringWriter.write(String.join("\t", values));
+            stringWriter.write("\n");
+        }
+        System.out.println("Data has been written to StringWriter");
+
+        // Print the result
+        String result = stringWriter.toString();
+        System.out.println("Result:\n" + result);
+    }
