@@ -35,4 +35,13 @@ private static String getStringValue(Map<String, Object> map, String key) {
     private static String removeQuotes(String value) {
         return value != null ? value.replaceAll("^\"|\"$", "") : null;
     }
+
+
+private static String getStringValue(Map<String, Object> map, String key) {
+    return Optional.ofNullable(map.get(key))
+            .map(Object::toString)
+            .map(JsonExtractor::removeQuotes) // Call removeQuotes method
+            .orElse(null);
+}
+
 }
