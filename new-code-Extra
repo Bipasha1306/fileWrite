@@ -15,3 +15,24 @@ public class DateParser {
         System.out.println("Parsed LocalDateTime: " + dateTime);
     }
 }
+
+
+////////////////////////////// to remove double qoutes
+
+private static String getStringValue(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key))
+                .map(Object::toString)
+                .orElse(null);
+    }
+
+    private static Map<String, Object> getMapValue(Map<String, Object> map, String key) {
+        return Optional.ofNullable(map.get(key))
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .orElse(null);
+    }
+
+    private static String removeQuotes(String value) {
+        return value != null ? value.replaceAll("^\"|\"$", "") : null;
+    }
+}
