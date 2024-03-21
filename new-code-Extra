@@ -44,4 +44,19 @@ private static String getStringValue(Map<String, Object> map, String key) {
             .orElse(null);
 }
 
+radixQueryDetail.setQueryId(removeQuotes(jsonNode.get("eventId").asText()));
+radixQueryDetail.setCycleDate(objectMapper.convertValue(jsonNode.get("timestamp"), Date.class));
+radixQueryDetail.setEventType(removeQuotes(jsonNode.get("eventType").asText().toUpperCase()));
+// For other fields, assuming they also need to have quotes removed
+// Example:
+// radixQueryDetail.setIsProcessed(removeQuotes(jsonNode.get("isProcessed").asText()));
+// radixQueryDetail.setComments(removeQuotes(jsonNode.get("comments").asText()));
+// ... and so on for other fields
+
+// Method to remove quotes
+private String removeQuotes(String str) {
+    return str.replaceAll("^\"|\"$", "");
+}
+
+
 }
