@@ -1,0 +1,17 @@
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class DateParser {
+    public static void main(String[] args) {
+        String dateString = "2024-03-20T16:40:00.55381Z";
+
+        // Define the date formatter with the appropriate pattern
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
+
+        // Parse the date string into a LocalDateTime object
+        LocalDateTime dateTime = LocalDateTime.parse(dateString, formatter);
+
+        // Print the parsed date and time
+        System.out.println("Parsed LocalDateTime: " + dateTime);
+    }
+}
