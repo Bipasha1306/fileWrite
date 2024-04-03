@@ -87,12 +87,13 @@ public class ReadYamlFile {
     }
 
     /**
-     * Stores data from JSON response into a text file.
+     * Stores data from JSON response into StringWriter.
      *
      * @param jsonResponse The JSON response string.
      * @param keys         The list of keys to extract data from JSON.
      * @param queryName    The query name to parse.
-     * @param stringWriter write the values and header
+     * @param stringWriter The StringWriter to write the values and header.
+     * @param eventTypeMap A map containing event types for account IDs.
      */
     public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter, Map<String, Object> eventTypeMap) {
         try {
@@ -131,15 +132,22 @@ public class ReadYamlFile {
 
                 // Add event type value
                 String eventTypeValue = (String) eventTypeMap.get(accountId);
-                values = Arrays.copyOf(values, values.length + 1);
-                values[values.length - 1] = (eventTypeValue != null) ? "\"" + eventTypeValue + "\"" : "\"\"";
 
-                // Replace null values with ""
-                for (int j = 0; j < values.length; j++) {
-                    if ("\"null\"".equals(values[j])) {
-                        values[j] = "\"\"";
+                // If eventType is "Delete", only show accountId and eventType with ""
+                if ("Delete".equals(eventTypeValue)) {
+                    int keySize = keys.size();
+                    String[] deleteValues = new String[keySize + 1];
+                    deleteValues[0] = "\"" + accountId + "\"";
+                    for (int k = 1; k < keySize; k++) {
+                        deleteValues[k] = "\"\"";
                     }
+                    deleteValues[keySize] = "\"Delete\"";
+                    values = deleteValues;
+                } else {
+                    values = Arrays.copyOf(values, values.length + 1);
+                    values[values.length - 1] = (eventTypeValue != null) ? "\"" + eventTypeValue + "\"" : "\"\"";
                 }
+
 
                 // Print values
                 System.out.println(String.join("\t", values));
