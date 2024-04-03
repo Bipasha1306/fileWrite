@@ -10,6 +10,8 @@ import java.util.*;
 
 public class ReadYamlFile {
 
+    private static boolean containEdges = false;
+
     public static void main(String[] args) {
         // Provide the path to your YAML file
         String yamlFilePath = "application.yml";
@@ -18,14 +20,19 @@ public class ReadYamlFile {
         try (InputStream input = Files.newInputStream(Paths.get(yamlFilePath))) {
             Yaml yaml = new Yaml();
             Map<String, Object> yamlData = yaml.load(input);
+            // queryName
+            String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("graphqlQuery");
+            String q1 = (String) yamlData.get("q3");
             // response
-            String r1 = (String) yamlData.get("graphqlResponse");
+            String r1 = (String) yamlData.get("r3");
 
-            List<String> headers = extractKeysFromQuery(q1);
+
+
+            List<String> headers = extractKeysFromQuery(q1, queryName);
             System.out.println(headers);
-            storeDataInTXT(r1, headers);
+            StringWriter stringWriter = new StringWriter();
+            storeDataInTXT(r1, headers, queryName,stringWriter);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -35,9 +42,10 @@ public class ReadYamlFile {
      * Extracts keys from a GraphQL query.
      *
      * @param query The GraphQL query string.
+     * @param queryName The query name to parse.
      * @return List of keys extracted from the query.
      */
-    public static List<String> extractKeysFromQuery(String query) {
+    public static List<String> extractKeysFromQuery(String query, String queryName) {
         List<String> keys = new ArrayList<>();
         Document document = new Parser().parseDocument(query);
 
@@ -47,7 +55,7 @@ public class ReadYamlFile {
                 .forEach(operationDefinition -> operationDefinition.getSelectionSet().getSelections().stream()
                         .filter(selection -> selection instanceof Field)
                         .map(selection -> (Field) selection)
-                        .forEach(field -> extractKeys(field, "", keys)));
+                        .forEach(field -> extractKeys(field, queryName+".", queryName, keys)));
 
         return keys;
     }
@@ -57,14 +65,17 @@ public class ReadYamlFile {
      *
      * @param field  The GraphQL field.
      * @param prefix The prefix of the nested keys.
+     * @param queryName The query name to parse.
      * @param keys   The list to store the extracted keys.
      */
-    private static void extractKeys(Field field, String prefix, List<String> keys) {
+    private static void extractKeys(Field field, String prefix, String queryName, List<String> keys) {
+        if(field.getName().equals("edges") || field.getName().equals("node")) containEdges = true;
+
         if (field.getSelectionSet() != null) {
             field.getSelectionSet().getSelections().stream()
                     .filter(selection -> selection instanceof Field)
                     .map(selection -> (Field) selection)
-                    .forEach(nestedField -> extractKeys(nestedField, prefix + (field.getName().equals("accountByIds") ? "" : field.getName() + "."), keys));
+                    .forEach(nestedField -> extractKeys(nestedField, prefix + (field.getName().equals(queryName) ? "" : field.getName() + "."), queryName, keys));
         } else {
             keys.add(prefix + field.getName());
         }
@@ -75,33 +86,39 @@ public class ReadYamlFile {
      *
      * @param jsonResponse The JSON response string.
      * @param keys         The list of keys to extract data from JSON.
+     * @param queryName    The query name to parse.
+     * @param stringWriter
      */
-    public static void storeDataInTXT(String jsonResponse, List<String> keys) {
+    public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter) {
         try {
             // Parse JSON data
             JSONObject jsonObject = new JSONObject(jsonResponse);
-            JSONArray accountByIds = jsonObject.getJSONObject("data").getJSONArray("accountByIds");
+            JSONArray jsonArray;
+            if (containEdges){
+                jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+            }else{
+                jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
+            }
 
-            // Write data to text file
-            BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"));
-            writer.write(String.join("\t", keys));
-            writer.newLine();
+            stringWriter.write(String.join("\t", keys));
+            stringWriter.write("\n");
 
-            for (int i = 0; i < accountByIds.length(); i++) {
-                JSONObject account = accountByIds.getJSONObject(i);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject account = jsonArray.getJSONObject(i);
                 String[] values = keys.stream()
                         .map(key -> {
                             String[] nestedKeys = key.split("\\.");
-                            Object value = getValue(account, nestedKeys);
+                            String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 :1, nestedKeys.length);
+                            Object value = getValue(account, newKeys);
                             return (value instanceof String) ? "\"" + value + "\"" : (value != null ? value.toString() : "null");
                         })
                         .toArray(String[]::new);
                 // Print values
                 System.out.println(String.join("\t", values));
-                writer.write(String.join("\t", values));
-                writer.newLine();
+                stringWriter.write(String.join("\t", values));
+                stringWriter.write("\n");
             }
-            writer.close();
+            stringWriter.close();
             System.out.println("Data has been written to output.txt");
         } catch (IOException e) {
             e.printStackTrace();

@@ -1,16 +1,10 @@
+queryName : accountByIds
 q1: |
   query accountByIds {
     accountByIds(id: [129583, 23980]) {
       accountId
-      primarySystem {
-        id
-        test
-        code
-      }
-      xyz {
-        test1
-        code
-      }
+      spn
+      spnName
     }
   }
 #
@@ -21,25 +15,90 @@ q1: |
 
 r1: |
   {
-  "data": {
-    "accountByIds": [
-      {
-        "accountId": 129583,
-        "primarySystem": {
-          "code": "djgbj df bgdj "
+    "data": {
+      "accountByIds": [
+        {
+          "accountId": 23980,
+          "spn": "2508346",
+          "spnName": "JPMorgan Investment Funds - Global Select Equity Fund"
+        },
+        {
+          "accountId": 129583,
+          "spn": "2483343",
+          "spnName": "Anandh Rural Bank DBA Anandh Rural Bank"
         }
-      },
-      {
-        "accountId": 23980,
-        "primarySystem": {
-          "code": "d fds fjnsd  fds"
-        }
-      }
-    ]
-  }
+      ]
+    }
   }
 
-graphqlQuery: |
+
+q2: |
+  query accountBenchmark {
+    accountBenchmark(accountId: [23980, 129583]) {
+      edges {
+        node {
+          accountId
+          benchmarkCode
+          benchmarkUniverse
+          benchmarkViewType
+          endDate
+          benchmarkTypeCode
+        }
+      }
+    }
+  }
+
+r2: |
+  {
+    "data": {
+      "accountBenchmark": {
+        "edges": [
+          {
+            "node": {
+              "accountId": 23980,
+              "benchmarkCode": "WRLDRNRUSDO",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "NDO",
+              "endDate": null,
+              "benchmarkTypeCode": "Attribution"
+            }
+          },
+          {
+            "node": {
+              "accountId": 23980,
+              "benchmarkCode": "WRLDRNRUSDO",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "NDO",
+              "endDate": null,
+              "benchmarkTypeCode": "Official"
+            }
+          },
+          {
+            "node": {
+              "accountId": 23980,
+              "benchmarkCode": "BMK11247",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "COB",
+              "endDate": "2018-11-30",
+              "benchmarkTypeCode": "Official"
+            }
+          },
+          {
+            "node": {
+              "accountId": 129583,
+              "benchmarkCode": "LOND6033WOOD",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "COB",
+              "endDate": "2014-09-30",
+              "benchmarkTypeCode": "Official"
+            }
+          }
+        ]
+      }
+    }
+  }
+
+q3: |
   query accountByIds {
     accountByIds(id: [129583, 23980]) {
       accountId
@@ -199,7 +258,7 @@ graphqlQuery: |
     }
   }
 
-graphqlResponse: |
+r3: |
   {
     "data": {
       "accountByIds": [
