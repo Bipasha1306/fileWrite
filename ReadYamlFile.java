@@ -23,16 +23,21 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q1");
+            String q1 = (String) yamlData.get("q2");
             // response
-            String r1 = (String) yamlData.get("r1");
+            String r1 = (String) yamlData.get("r2");
 
+            // Create a HashMap with String keys and Object values
+            Map<String, Object> eventMap = new HashMap<>();
 
+            // Put dummy values into the map
+            eventMap.put("129583", "Insert");
+            eventMap.put("23980", "Delete");
 
             List<String> headers = extractKeysFromQuery(q1, queryName);
             System.out.println(headers);
             StringWriter stringWriter = new StringWriter();
-            storeDataInTXT(r1, headers, queryName,stringWriter);
+            storeDataInTXT(r1, headers, queryName,stringWriter,eventMap);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -89,22 +94,32 @@ public class ReadYamlFile {
      * @param queryName    The query name to parse.
      * @param stringWriter write the values and header
      */
-    public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter) {
+    public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter, Map<String, Object> eventTypeMap) {
         try {
             // Parse JSON data
             JSONObject jsonObject = new JSONObject(jsonResponse);
             JSONArray jsonArray;
-            if (containEdges){
+            if (containEdges) {
                 jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
-            }else{
+            } else {
                 jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
             }
 
-            stringWriter.write(String.join("\t", keys));
+            // Create a new list for headers
+            List<String> headers = new ArrayList<>(keys);
+            headers.add("eventType");
+
+            stringWriter.write(String.join("\t", headers));
             stringWriter.write("\n");
 
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject account = jsonArray.getJSONObject(i);
+                String accountId;
+                if (account.has("node")) {
+                    accountId = String.valueOf(account.getJSONObject("node").getInt("accountId"));
+                } else {
+                    accountId = String.valueOf(account.getInt("accountId"));
+                }
                 String[] values = keys.stream()
                         .map(key -> {
                             String[] nestedKeys = key.split("\\.");
@@ -113,23 +128,33 @@ public class ReadYamlFile {
                             return (value != null) ? "\"" + value.toString() + "\"" : "\"\"";
                         })
                         .toArray(String[]::new);
+
+                // Add event type value
+                String eventTypeValue = (String) eventTypeMap.get(accountId);
+                values = Arrays.copyOf(values, values.length + 1);
+                values[values.length - 1] = (eventTypeValue != null) ? "\"" + eventTypeValue + "\"" : "\"\"";
+
                 // Replace null values with ""
                 for (int j = 0; j < values.length; j++) {
                     if ("\"null\"".equals(values[j])) {
                         values[j] = "\"\"";
                     }
                 }
+
                 // Print values
                 System.out.println(String.join("\t", values));
                 stringWriter.write(String.join("\t", values));
                 stringWriter.write("\n");
             }
             stringWriter.close();
+            String result = stringWriter.toString();
             System.out.println("Data has been written to output.txt");
+            System.out.println(result);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 
 
     /**
