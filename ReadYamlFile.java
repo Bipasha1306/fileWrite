@@ -23,9 +23,9 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q3");
+            String q1 = (String) yamlData.get("q1");
             // response
-            String r1 = (String) yamlData.get("r3");
+            String r1 = (String) yamlData.get("r1");
 
 
 
@@ -87,7 +87,7 @@ public class ReadYamlFile {
      * @param jsonResponse The JSON response string.
      * @param keys         The list of keys to extract data from JSON.
      * @param queryName    The query name to parse.
-     * @param stringWriter
+     * @param stringWriter write the values and header
      */
     public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter) {
         try {
@@ -108,11 +108,17 @@ public class ReadYamlFile {
                 String[] values = keys.stream()
                         .map(key -> {
                             String[] nestedKeys = key.split("\\.");
-                            String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 :1, nestedKeys.length);
+                            String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
                             Object value = getValue(account, newKeys);
-                            return (value instanceof String) ? "\"" + value + "\"" : (value != null ? value.toString() : "null");
+                            return (value != null) ? "\"" + value.toString() + "\"" : "\"\"";
                         })
                         .toArray(String[]::new);
+                // Replace null values with ""
+                for (int j = 0; j < values.length; j++) {
+                    if ("\"null\"".equals(values[j])) {
+                        values[j] = "\"\"";
+                    }
+                }
                 // Print values
                 System.out.println(String.join("\t", values));
                 stringWriter.write(String.join("\t", values));
@@ -124,6 +130,7 @@ public class ReadYamlFile {
             e.printStackTrace();
         }
     }
+
 
     /**
      * Recursively gets nested values from a JSON object.
