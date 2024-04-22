@@ -136,7 +136,12 @@ public class ReadYamlFile {
                     }
                     if (!found) {
                         // Apply Hard Delete and write eventType
-                        stringWriter.write(String.format("\"%s\"\t\"Hard Delete\"\n", accountId));
+                        String[] hardDeleteValues = new String[keys.size() + 1];
+                        Arrays.fill(hardDeleteValues, "\"\"");
+                        hardDeleteValues[0] = "\"" + accountId + "\"";
+                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                        stringWriter.write(String.join("\t", hardDeleteValues));
+                        stringWriter.write("\n");
                         continue; // Skip writing other data for this account
                     }
                 }
@@ -173,7 +178,12 @@ public class ReadYamlFile {
             for (String accountId : eventTypeMap.keySet()) {
                 if (!jsonResponse.contains(accountId)) {
                     if (eventTypeMap.get(accountId).equals("Delete")) {
-                        stringWriter.write(String.format("\"%s\"\t\"Hard Delete\"\n", accountId));
+                        String[] hardDeleteValues = new String[keys.size() + 1];
+                        Arrays.fill(hardDeleteValues, "\"\"");
+                        hardDeleteValues[0] = "\"" + accountId + "\"";
+                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                        stringWriter.write(String.join("\t", hardDeleteValues));
+                        stringWriter.write("\n");
                     }
                 }
             }
