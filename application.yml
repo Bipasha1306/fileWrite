@@ -34,7 +34,7 @@ r1: |
 
 q2: |
   query accountBenchmark {
-    accountBenchmark(accountId: [23980, 129583]) {
+    accountBenchmark(accountId: [23980, 129583,12345]) {
       edges {
         node {
           accountId

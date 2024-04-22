@@ -33,6 +33,7 @@ public class ReadYamlFile {
             // Put dummy values into the map
             eventMap.put("129583", "Insert");
             eventMap.put("23980", "Delete");
+            eventMap.put("12345", "Delete");
 
             List<String> headers = extractKeysFromQuery(q1, queryName);
             System.out.println(headers);
@@ -87,13 +88,12 @@ public class ReadYamlFile {
     }
 
     /**
-     * Stores data from JSON response into StringWriter.
+     * Stores data from JSON response into a text file.
      *
      * @param jsonResponse The JSON response string.
      * @param keys         The list of keys to extract data from JSON.
      * @param queryName    The query name to parse.
-     * @param stringWriter The StringWriter to write the values and header.
-     * @param eventTypeMap A map containing event types for account IDs.
+     * @param stringWriter write the values and header
      */
     public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter, Map<String, Object> eventTypeMap) {
         try {
@@ -113,6 +113,7 @@ public class ReadYamlFile {
             stringWriter.write(String.join("\t", headers));
             stringWriter.write("\n");
 
+            // Iterate over the accounts in the JSON response
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject account = jsonArray.getJSONObject(i);
                 String accountId;
@@ -121,6 +122,26 @@ public class ReadYamlFile {
                 } else {
                     accountId = String.valueOf(account.getInt("accountId"));
                 }
+
+                // Check if the account is marked for deletion
+                if (eventTypeMap.containsKey(accountId) && eventTypeMap.get(accountId).equals("Delete")) {
+                    boolean found = false;
+                    for (String key : keys) {
+                        String[] nestedKeys = key.split("\\.");
+                        String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                        if (getValue(account, newKeys) != null) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        // Apply Hard Delete and write eventType
+                        stringWriter.write(String.format("\"%s\"\t\"Hard Delete\"\n", accountId));
+                        continue; // Skip writing other data for this account
+                    }
+                }
+
+                // Write data for the account
                 String[] values = keys.stream()
                         .map(key -> {
                             String[] nestedKeys = key.split("\\.");
@@ -130,30 +151,33 @@ public class ReadYamlFile {
                         })
                         .toArray(String[]::new);
 
-                // Add event type value
-                String eventTypeValue = (String) eventTypeMap.get(accountId);
+                // Add eventType value
+                String eventTypeValue = (String) eventTypeMap.getOrDefault(accountId, "");
+                values = Arrays.copyOf(values, values.length + 1);
+                values[values.length - 1] = "\"" + eventTypeValue + "\"";
 
-                // If eventType is "Delete", only show accountId and eventType with ""
-                if ("Delete".equals(eventTypeValue)) {
-                    int keySize = keys.size();
-                    String[] deleteValues = new String[keySize + 1];
-                    deleteValues[0] = "\"" + accountId + "\"";
-                    for (int k = 1; k < keySize; k++) {
-                        deleteValues[k] = "\"\"";
+                // Replace null values with ""
+                for (int j = 0; j < values.length; j++) {
+                    if ("\"null\"".equals(values[j])) {
+                        values[j] = "\"\"";
                     }
-                    deleteValues[keySize] = "\"Delete\"";
-                    values = deleteValues;
-                } else {
-                    values = Arrays.copyOf(values, values.length + 1);
-                    values[values.length - 1] = (eventTypeValue != null) ? "\"" + eventTypeValue + "\"" : "\"\"";
                 }
-
 
                 // Print values
                 System.out.println(String.join("\t", values));
                 stringWriter.write(String.join("\t", values));
                 stringWriter.write("\n");
             }
+
+            // Handle accounts marked for deletion but not found in the JSON response
+            for (String accountId : eventTypeMap.keySet()) {
+                if (!jsonResponse.contains(accountId)) {
+                    if (eventTypeMap.get(accountId).equals("Delete")) {
+                        stringWriter.write(String.format("\"%s\"\t\"Hard Delete\"\n", accountId));
+                    }
+                }
+            }
+
             stringWriter.close();
             String result = stringWriter.toString();
             System.out.println("Data has been written to output.txt");
