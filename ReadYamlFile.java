@@ -23,16 +23,16 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q2");
+            String q1 = (String) yamlData.get("q3");
             // response
-            String r1 = (String) yamlData.get("r2");
+            String r1 = (String) yamlData.get("r3");
 
             // Create a HashMap with String keys and Object values
             Map<String, Object> eventMap = new HashMap<>();
 
             // Put dummy values into the map
             eventMap.put("129583", "Delete");
-            eventMap.put("23980", "Delete");
+            eventMap.put("23980", "Update");
             eventMap.put("12345", "Delete");
             eventMap.put("23", "Delete");
             eventMap.put("98", "Delete");
@@ -116,6 +116,40 @@ public class ReadYamlFile {
             stringWriter.write(String.join("\t", headers));
             stringWriter.write("\n");
 
+            // Iterate over the eventTypeMap to find account IDs marked for deletion
+            for (String accountId : eventTypeMap.keySet()) {
+                // Check if the eventType for this account is "Delete"
+                if (eventTypeMap.get(accountId).equals("Delete")) {
+                    // Flag to check if the account is found in the JSON response
+                    boolean found = false;
+
+                    // Iterate over the JSON response to find the account
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject account = jsonArray.getJSONObject(i);
+                        String currentAccountId;
+                        if (account.has("node")) {
+                            currentAccountId = String.valueOf(account.getJSONObject("node").getInt("accountId"));
+                        } else {
+                            currentAccountId = String.valueOf(account.getInt("accountId"));
+                        }
+                        // If the account ID is found, set the found flag to true and break the loop
+                        if (currentAccountId.equals(accountId)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    // If the account ID is not found, write a "Hard Delete" entry
+                    if (!found) {
+                        String[] hardDeleteValues = new String[keys.size() + 1];
+                        Arrays.fill(hardDeleteValues, "\"\"");
+                        hardDeleteValues[0] = "\"" + accountId + "\"";
+                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                        stringWriter.write(String.join("\t", hardDeleteValues));
+                        stringWriter.write("\n");
+                    }
+                }
+            }
+
             // Iterate over the accounts in the JSON response
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject account = jsonArray.getJSONObject(i);
@@ -124,35 +158,6 @@ public class ReadYamlFile {
                     accountId = String.valueOf(account.getJSONObject("node").getInt("accountId"));
                 } else {
                     accountId = String.valueOf(account.getInt("accountId"));
-                }
-
-                // Check if the account is marked for deletion
-                if (eventTypeMap.containsKey(accountId) && eventTypeMap.get(accountId).equals("Delete")) {
-                    boolean found = false;
-                    for (String key : keys) {
-                        String[] nestedKeys = key.split("\\.");
-                        String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
-                        if (getValue(account, newKeys) != null) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        // Apply Hard Delete and write eventType
-                        String[] hardDeleteValues = new String[keys.size() + 1];
-                        Arrays.fill(hardDeleteValues, "\"\"");
-                        hardDeleteValues[0] = "\"" + accountId + "\"";
-                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
-
-                        // Fill missing columns with empty strings
-                        for (int j = 1; j < hardDeleteValues.length - 1; j++) {
-                            hardDeleteValues[j] = "\"\"";
-                        }
-
-                        stringWriter.write(String.join("\t", hardDeleteValues));
-                        stringWriter.write("\n");
-                        continue; // Skip writing other data for this account
-                    }
                 }
 
                 // Write data for the account
@@ -181,38 +186,6 @@ public class ReadYamlFile {
                 System.out.println(String.join("\t", values));
                 stringWriter.write(String.join("\t", values));
                 stringWriter.write("\n");
-            }
-
-            // Handle accounts marked for deletion but not found in the JSON response
-            for (String accountId : eventTypeMap.keySet()) {
-                boolean found = false;
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    JSONObject account = jsonArray.getJSONObject(i);
-                    String currentAccountId;
-                    if (account.has("node")) {
-                        currentAccountId = String.valueOf(account.getJSONObject("node").getInt("accountId"));
-                    } else {
-                        currentAccountId = String.valueOf(account.getInt("accountId"));
-                    }
-                    if (currentAccountId.equals(accountId)) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found && eventTypeMap.get(accountId).equals("Delete")) {
-                    String[] hardDeleteValues = new String[keys.size() + 1];
-                    Arrays.fill(hardDeleteValues, "\"\"");
-                    hardDeleteValues[0] = "\"" + accountId + "\"";
-                    hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
-
-                    // Fill missing columns with empty strings
-                    for (int j = 1; j < hardDeleteValues.length - 1; j++) {
-                        hardDeleteValues[j] = "\"\"";
-                    }
-
-                    stringWriter.write(String.join("\t", hardDeleteValues));
-                    stringWriter.write("\n");
-                }
             }
 
             stringWriter.close();
