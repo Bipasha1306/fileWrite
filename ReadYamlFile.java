@@ -31,9 +31,12 @@ public class ReadYamlFile {
             Map<String, Object> eventMap = new HashMap<>();
 
             // Put dummy values into the map
-            eventMap.put("129583", "Insert");
+            eventMap.put("129583", "Delete");
             eventMap.put("23980", "Delete");
             eventMap.put("12345", "Delete");
+            eventMap.put("23", "Delete");
+            eventMap.put("98", "Delete");
+            eventMap.put("66", "Delete");
 
             List<String> headers = extractKeysFromQuery(q1, queryName);
             System.out.println(headers);
@@ -140,6 +143,12 @@ public class ReadYamlFile {
                         Arrays.fill(hardDeleteValues, "\"\"");
                         hardDeleteValues[0] = "\"" + accountId + "\"";
                         hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+
+                        // Fill missing columns with empty strings
+                        for (int j = 1; j < hardDeleteValues.length - 1; j++) {
+                            hardDeleteValues[j] = "\"\"";
+                        }
+
                         stringWriter.write(String.join("\t", hardDeleteValues));
                         stringWriter.write("\n");
                         continue; // Skip writing other data for this account
@@ -176,15 +185,33 @@ public class ReadYamlFile {
 
             // Handle accounts marked for deletion but not found in the JSON response
             for (String accountId : eventTypeMap.keySet()) {
-                if (!jsonResponse.contains(accountId)) {
-                    if (eventTypeMap.get(accountId).equals("Delete")) {
-                        String[] hardDeleteValues = new String[keys.size() + 1];
-                        Arrays.fill(hardDeleteValues, "\"\"");
-                        hardDeleteValues[0] = "\"" + accountId + "\"";
-                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
-                        stringWriter.write(String.join("\t", hardDeleteValues));
-                        stringWriter.write("\n");
+                boolean found = false;
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject account = jsonArray.getJSONObject(i);
+                    String currentAccountId;
+                    if (account.has("node")) {
+                        currentAccountId = String.valueOf(account.getJSONObject("node").getInt("accountId"));
+                    } else {
+                        currentAccountId = String.valueOf(account.getInt("accountId"));
                     }
+                    if (currentAccountId.equals(accountId)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found && eventTypeMap.get(accountId).equals("Delete")) {
+                    String[] hardDeleteValues = new String[keys.size() + 1];
+                    Arrays.fill(hardDeleteValues, "\"\"");
+                    hardDeleteValues[0] = "\"" + accountId + "\"";
+                    hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+
+                    // Fill missing columns with empty strings
+                    for (int j = 1; j < hardDeleteValues.length - 1; j++) {
+                        hardDeleteValues[j] = "\"\"";
+                    }
+
+                    stringWriter.write(String.join("\t", hardDeleteValues));
+                    stringWriter.write("\n");
                 }
             }
 
