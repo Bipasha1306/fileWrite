@@ -7,6 +7,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ReadYamlFile {
 
@@ -26,6 +28,19 @@ public class ReadYamlFile {
             String q1 = (String) yamlData.get("q3");
             // response
             String r1 = (String) yamlData.get("r3");
+
+            // Regular expression pattern to match the operation name
+            Pattern pattern = Pattern.compile("^\\s*(query|mutation|subscription)\\s+(\\w+).*", Pattern.DOTALL);
+            Matcher matcher = pattern.matcher(q1);
+
+            if (matcher.find()) {
+                String operationType = matcher.group(1);
+                String operationName = matcher.group(2);
+                System.out.println("Operation Type: " + operationType);
+                System.out.println("Operation Name: " + operationName);
+            } else {
+                System.out.println("Operation name not found.");
+            }
 
             // Create a HashMap with String keys and Object values
             Map<String, Object> eventMap = new HashMap<>();
