@@ -1,4 +1,4 @@
-queryName : accountBenchmark
+queryName : accountHierarchy
 q1: |
   query accountByIds {
     accountByIds(id: [129583, 23980]) {
@@ -100,7 +100,7 @@ r2: |
 
 q3: |
   query accountByIds {
-    accountByIds(id: [129583, 23980]) {
+    accountByIds(id: [23980, 129583,12345,23,98,66]) {
       accountId
       primarySystem {
         code
@@ -483,5 +483,244 @@ r3: |
           }
         }
       ]
+    }
+  }
+
+q4: |
+  query accountBenchmark {
+    accountBenchmark(accountId: [23980, 129583,12345,23,98,66]) {
+      edges {
+        node {
+          accountId
+          benchmarkCode
+          benchmarkUniverse
+          benchmarkViewType
+          endDate
+          benchmarkTypeCode
+        }
+      }
+    }
+  }
+
+r4: |
+  {
+    "data": {
+      "accountBenchmark": {
+        "edges": [
+          {
+            "node": {
+              "accountId": 23980,
+              "benchmarkCode": "WRLDRNRUSDO",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "NDO",
+              "endDate": null,
+              "benchmarkTypeCode": "Attribution"
+            }
+          },
+          {
+            "node": {
+              "accountId": 23980,
+              "benchmarkCode": "WRLDRNRUSDO",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "NDO",
+              "endDate": null,
+              "benchmarkTypeCode": "Official"
+            }
+          },
+          {
+            "node": {
+              "accountId": 23980,
+              "benchmarkCode": "BMK11247",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "COB",
+              "endDate": "2018-11-30",
+              "benchmarkTypeCode": "Official"
+            }
+          },
+          {
+            "node": {
+              "accountId": 129583,
+              "benchmarkCode": "LOND6033WOOD",
+              "benchmarkUniverse": "CLOSING",
+              "benchmarkViewType": "COB",
+              "endDate": "2014-09-30",
+              "benchmarkTypeCode": "Official"
+            }
+          }
+        ]
+      }
+    }
+  }
+
+q5: |
+  query accountHierarchy {
+    accountHierarchy (accountId: [181834, 181835])  {
+      edges {
+        node {
+          childAccount {
+            accountId
+            code
+            shortName
+            primarySystem {
+              code
+            }
+            accountStatusType {
+              code
+            }
+            accountHierarchyType {
+              code
+              name
+            }
+          }
+          parentAccount {
+            accountId
+            code
+            shortName
+            primarySystem {
+              code
+            }
+            accountStatusType {
+              code
+              name
+            }
+            accountHierarchyType {
+              code
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+
+r5: |
+  {
+    "data": {
+      "accountHierarchy": {
+        "edges": [
+          {
+            "node": {
+              "childAccount": {
+                "accountId": 181834,
+                "code": "71407",
+                "shortName": "71407 -2- short nm",
+                "primarySystem": {
+                  "code": "WSSL"
+                },
+                "accountStatusType": {
+                  "code": "A"
+                },
+                "accountHierarchyType": {
+                  "code": "standalone",
+                  "name": "Stand-alone"
+                }
+              },
+              "parentAccount": {
+                "accountId": 181837,
+                "code": "593064",
+                "shortName": "593064 -2- short nm",
+                "primarySystem": {
+                  "code": "BNYL"
+                },
+                "accountStatusType": {
+                  "code": "CLOC",
+                  "name": "Closed - Outside custody"
+                },
+                "accountHierarchyType": null
+              }
+            }
+          },
+          {
+            "node": {
+              "childAccount": {
+                "accountId": 181834,
+                "code": "71407",
+                "shortName": "71407 -2- short nm",
+                "primarySystem": {
+                  "code": "WSSL"
+                },
+                "accountStatusType": {
+                  "code": "A"
+                },
+                "accountHierarchyType": {
+                  "code": "standalone",
+                  "name": "Stand-alone"
+                }
+              },
+              "parentAccount": {
+                "accountId": 181837,
+                "code": "593064",
+                "shortName": "593064 -2- short nm",
+                "primarySystem": {
+                  "code": "BNYL"
+                },
+                "accountStatusType": {
+                  "code": "CLOC",
+                  "name": "Closed - Outside custody"
+                },
+                "accountHierarchyType": null
+              }
+            }
+          },
+          {
+            "node": {
+              "childAccount": {
+                "accountId": 181835,
+                "code": "536685",
+                "shortName": "536685 -2- short nm",
+                "primarySystem": {
+                  "code": "BNYL"
+                },
+                "accountStatusType": {
+                  "code": "CLOC"
+                },
+                "accountHierarchyType": null
+              },
+              "parentAccount": {
+                "accountId": 181837,
+                "code": "593064",
+                "shortName": "593064 -2- short nm",
+                "primarySystem": {
+                  "code": "BNYL"
+                },
+                "accountStatusType": {
+                  "code": "CLOC",
+                  "name": "Closed - Outside custody"
+                },
+                "accountHierarchyType": null
+              }
+            }
+          },
+          {
+            "node": {
+              "childAccount": {
+                "accountId": 181835,
+                "code": "536685",
+                "shortName": "536685 -2- short nm",
+                "primarySystem": {
+                  "code": "BNYL"
+                },
+                "accountStatusType": {
+                  "code": "CLOC"
+                },
+                "accountHierarchyType": null
+              },
+              "parentAccount": {
+                "accountId": 181837,
+                "code": "593064",
+                "shortName": "593064 -2- short nm",
+                "primarySystem": {
+                  "code": "BNYL"
+                },
+                "accountStatusType": {
+                  "code": "CLOC",
+                  "name": "Closed - Outside custody"
+                },
+                "accountHierarchyType": null
+              }
+            }
+          }
+        ]
+      }
     }
   }
