@@ -117,90 +117,90 @@ public class ReadYamlFile {
      * @param stringWriter write the values and header
      */
     public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter, Map<String, Object> eventTypeMap) {
-            try {
-                // Parse JSON data
-                JSONObject jsonObject = new JSONObject(jsonResponse);
-                JSONArray jsonArray;
-                if (containEdges) {
-                    jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
-                } else {
-                    jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
-                }
-
-                // Create a new list for headers
-                List<String> headers = new ArrayList<>(keys);
-                headers.add("eventType");
-
-                stringWriter.write(String.join("\t", headers));
-                stringWriter.write("\n");
-
-                // Iterate over the eventTypeMap to find account IDs marked for deletion
-                for (String accountId : eventTypeMap.keySet()) {
-                    // Check if the eventType for this account is "Delete"
-                    if (eventTypeMap.get(accountId).equals("Delete")) {
-                        // Check if the account ID is found in the JSON response
-                        boolean accountFound = false;
-                        for (int i = 0; i < jsonArray.length(); i++) {
-                            JSONObject account = jsonArray.getJSONObject(i);
-                            JSONObject accountObject = findAccountById(account, accountId);
-                            if (accountObject != null) {
-                                accountFound = true;
-                                break;
-                            }
-                        }
-                        // If the account ID is not found, write a "Hard Delete" entry
-                        if (!accountFound) {
-                            String[] hardDeleteValues = new String[keys.size() + 1];
-                            Arrays.fill(hardDeleteValues, "\"\"");
-                            hardDeleteValues[0] = "\"" + accountId + "\"";
-                            hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
-                            stringWriter.write(String.join("\t", hardDeleteValues));
-                            stringWriter.write("\n");
-                        }
-                    }
-                }
-
-                // Iterate over the accounts in the JSON response
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    JSONObject account = jsonArray.getJSONObject(i);
-                    String accountId = extractAccountIdFromAccount(account);
-
-                    // Write data for the account
-                    String[] values = keys.stream()
-                            .map(key -> {
-                                String[] nestedKeys = key.split("\\.");
-                                String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
-                                Object value = getValue(account, newKeys);
-                                return (value != null) ? "\"" + value.toString() + "\"" : "\"\"";
-                            })
-                            .toArray(String[]::new);
-
-                    // Add eventType value
-                    String eventTypeValue = (String) eventTypeMap.getOrDefault(accountId, "");
-                    values = Arrays.copyOf(values, values.length + 1);
-                    values[values.length - 1] = "\"" + eventTypeValue + "\"";
-
-                    // Replace null values with ""
-                    for (int j = 0; j < values.length; j++) {
-                        if ("\"null\"".equals(values[j])) {
-                            values[j] = "\"\"";
-                        }
-                    }
-
-                    // Print values
-                    System.out.println(String.join("\t", values));
-                    stringWriter.write(String.join("\t", values));
-                    stringWriter.write("\n");
-                }
-
-                stringWriter.close();
-                String result = stringWriter.toString();
-                System.out.println("Data has been written to output.txt");
-                System.out.println(result);
-            } catch (IOException e) {
-                e.printStackTrace();
+        try {
+            // Parse JSON data
+            JSONObject jsonObject = new JSONObject(jsonResponse);
+            JSONArray jsonArray;
+            if (containEdges) {
+                jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+            } else {
+                jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
             }
+
+            // Create a new list for headers
+            List<String> headers = new ArrayList<>(keys);
+            headers.add("eventType");
+
+            stringWriter.write(String.join("\t", headers));
+            stringWriter.write("\n");
+
+            // Iterate over the eventTypeMap to find account IDs marked for deletion
+            for (String accountId : eventTypeMap.keySet()) {
+                // Check if the eventType for this account is "Delete"
+                if (eventTypeMap.get(accountId).equals("Delete")) {
+                    // Check if the account ID is found in the JSON response
+                    boolean accountFound = false;
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject account = jsonArray.getJSONObject(i);
+                        String accountIdInResponse = extractAccountIdFromAccount(account);
+                        if (accountId.equals(accountIdInResponse)) {
+                            accountFound = true;
+                            break;
+                        }
+                    }
+                    // If the account ID is not found, write a "Hard Delete" entry
+                    if (!accountFound) {
+                        String[] hardDeleteValues = new String[keys.size() + 1];
+                        Arrays.fill(hardDeleteValues, "\"\"");
+                        hardDeleteValues[0] = "\"" + accountId + "\"";
+                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                        stringWriter.write(String.join("\t", hardDeleteValues));
+                        stringWriter.write("\n");
+                    }
+                }
+            }
+
+            // Iterate over the accounts in the JSON response
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject account = jsonArray.getJSONObject(i);
+                String accountId = extractAccountIdFromAccount(account);
+
+                // Write data for the account
+                String[] values = keys.stream()
+                        .map(key -> {
+                            String[] nestedKeys = key.split("\\.");
+                            String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                            Object value = getValue(account, newKeys);
+                            return (value != null) ? "\"" + value.toString() + "\"" : "\"\"";
+                        })
+                        .toArray(String[]::new);
+
+                // Add eventType value
+                String eventTypeValue = (String) eventTypeMap.getOrDefault(accountId, "");
+                values = Arrays.copyOf(values, values.length + 1);
+                values[values.length - 1] = "\"" + eventTypeValue + "\"";
+
+                // Replace null values with ""
+                for (int j = 0; j < values.length; j++) {
+                    if ("\"null\"".equals(values[j])) {
+                        values[j] = "\"\"";
+                    }
+                }
+
+                // Print values
+                System.out.println(String.join("\t", values));
+                stringWriter.write(String.join("\t", values));
+                stringWriter.write("\n");
+            }
+
+            stringWriter.close();
+            String result = stringWriter.toString();
+            System.out.println("Data has been written to output.txt");
+            System.out.println(result);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
 
     /**
      * Recursively searches for a specific account ID within a JSON object and its nested objects.
