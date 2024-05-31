@@ -81,7 +81,7 @@ public class ReadYamlFile {
                 .forEach(operationDefinition -> operationDefinition.getSelectionSet().getSelections().stream()
                         .filter(selection -> selection instanceof Field)
                         .map(selection -> (Field) selection)
-                        .forEach(field -> extractKeys(field, queryName+".", queryName, keys)));
+                        .forEach(field -> extractKeys(field, "", queryName, keys)));
 
         return keys;
     }
@@ -95,15 +95,17 @@ public class ReadYamlFile {
      * @param keys   The list to store the extracted keys.
      */
     private static void extractKeys(Field field, String prefix, String queryName, List<String> keys) {
-        if(field.getName().equals("edges") || field.getName().equals("node")) containEdges = true;
+        if (field.getName().equals("edges") || field.getName().equals("node")) {
+            containEdges = true;
+        }
 
         if (field.getSelectionSet() != null) {
             field.getSelectionSet().getSelections().stream()
                     .filter(selection -> selection instanceof Field)
                     .map(selection -> (Field) selection)
-                    .forEach(nestedField -> extractKeys(nestedField, prefix + (field.getName().equals(queryName) ? "" : field.getName() + "."), queryName, keys));
+                    .forEach(nestedField -> extractKeys(nestedField, prefix + (prefix.isEmpty() ? "" : ".") + field.getName(), queryName, keys));
         } else {
-            keys.add(prefix + field.getName());
+            keys.add(prefix.isEmpty() ? field.getName() : prefix + "." + field.getName());
         }
     }
 

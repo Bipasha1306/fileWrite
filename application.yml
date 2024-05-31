@@ -724,3 +724,67 @@ r5: |
       }
     }
   }
+
+
+
+q6: |
+  query account {
+    account(id: 2090192) {
+      edges {
+        node {
+          accountId
+          code
+          primarySystem {
+            code
+          }
+          accountProduct {
+            strategy
+            desk
+          }
+          ownedByAccount {
+            account {
+              accountId
+              code
+              accountProduct {
+                strategy
+                desk
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+r6: |
+  {
+    "data": {
+      "account": {
+        "edges": [
+          {
+            "node": {
+              "accountId": 2090192,
+              "code": "166380",
+              "primarySystem": {
+                "code": "RAFA"
+              },
+              "accountProduct": {
+              "strategy": "A184E31436854C73BF2D1936715C8BD4",
+              "desk": "301508"
+                },
+              "ownedByAccount": {
+                "account": {
+                  "accountId": 2090192,
+                  "code": "166380",
+                  "accountProduct": {
+                    "strategy": "A184E31436854C73BF2D1936715C8BD4",
+                    "desk": "301508"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
