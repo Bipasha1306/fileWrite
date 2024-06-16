@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 public class ReadYamlFile {
 
     private static boolean containEdges = false;
+    public static final String ACCOUNTIDKEY = "accountId";
 
     public static void main(String[] args) {
         // Provide the path to your YAML file
@@ -25,10 +26,10 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q5");
+            String q1 = (String) yamlData.get("q3");
             System.out.println(q1);
             // response
-            String r1 = (String) yamlData.get("r5");
+            String r1 = (String) yamlData.get("r3");
             System.out.println(r1);
 
             // Regular expression pattern to match the operation name
@@ -49,16 +50,15 @@ public class ReadYamlFile {
 
             // Put dummy values into the map
             eventMap.put("181834", "Insert");
-            eventMap.put("181835", "Delete");
-            eventMap.put("12345", "Delete");
-            eventMap.put("23", "Delete");
-            eventMap.put("98", "Delete");
-            eventMap.put("66", "Delete");
+            eventMap.put("23980", "Delete");
+            //eventMap.put("129583", "Delete");
+//            eventMap.put("23", "Delete");
+//            eventMap.put("98", "Delete");
+//            eventMap.put("66", "Delete");
 
             List<String> headers = extractKeysFromQuery(q1, queryName);
             System.out.println(headers);
-            StringWriter stringWriter = new StringWriter();
-            storeDataInTXT(r1, headers, queryName,stringWriter,eventMap);
+            storeDataInTXT(r1, headers, queryName,eventMap);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -118,7 +118,9 @@ public class ReadYamlFile {
      * @param queryName    The query name to parse.
      * @param stringWriter write the values and header
      */
-    public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, StringWriter stringWriter, Map<String, Object> eventTypeMap) {
+    public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, Map<String, Object> eventTypeMap) {
+        StringWriter stringWriter = new StringWriter();
+
         try {
             // Parse JSON data
             JSONObject jsonObject = new JSONObject(jsonResponse);
@@ -136,138 +138,58 @@ public class ReadYamlFile {
             stringWriter.write(String.join("\t", headers));
             stringWriter.write("\n");
 
-            // Iterate over the eventTypeMap to find account IDs marked for deletion
-            for (String accountId : eventTypeMap.keySet()) {
-                // Check if the eventType for this account is "Delete"
-                if (eventTypeMap.get(accountId).equals("Delete")) {
-                    // Check if the account ID is found in the JSON response
-                    boolean accountFound = false;
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject account = jsonArray.getJSONObject(i);
-                        String accountIdInResponse = extractAccountIdFromAccount(account);
-                        if (accountId.equals(accountIdInResponse)) {
-                            accountFound = true;
-                            break;
-                        }
-                    }
-                    // If the account ID is not found, write a "Hard Delete" entry
-                    if (!accountFound) {
-                        String[] hardDeleteValues = new String[keys.size() + 1];
-                        Arrays.fill(hardDeleteValues, "\"\"");
-                        hardDeleteValues[0] = "\"" + accountId + "\"";
-                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
-                        stringWriter.write(String.join("\t", hardDeleteValues));
-                        stringWriter.write("\n");
-                    }
-                }
-            }
+            BufferedWriter writer = new BufferedWriter(new FileWriter("output.csv"));
+            writer.write(String.join(",", keys));
+            writer.newLine();
 
             // Iterate over the accounts in the JSON response
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject account = jsonArray.getJSONObject(i);
-                String accountId = extractAccountIdFromAccount(account);
 
                 // Write data for the account
-                String[] values = keys.stream()
-                        .map(key -> {
-                            String[] nestedKeys = key.split("\\.");
-                            String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
-                            Object value = getValue(account, newKeys);
-                            return (value != null) ? "\"" + value.toString() + "\"" : "\"\"";
-                        })
-                        .toArray(String[]::new);
+                List<String> values = new ArrayList<>();
+                String accountId = null;
 
-                // Add eventType value
-                String eventTypeValue = (String) eventTypeMap.getOrDefault(accountId, "");
-                values = Arrays.copyOf(values, values.length + 1);
-                values[values.length - 1] = "\"" + eventTypeValue + "\"";
+                // Loop over each key to extract values
+                int keysIndex = 0;
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                    Object value = getValue(account, newKeys);
 
-                // Replace null values with ""
-                for (int j = 0; j < values.length; j++) {
-                    if ("\"null\"".equals(values[j])) {
-                        values[j] = "\"\"";
+                    // Check if the current key is accountId
+                    if (nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(ACCOUNTIDKEY)) {
+                        accountId = (value != null) ? value.toString() : null;
                     }
+                    values.add((value != null) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                    //if last iteration of for loop add "insert" or "delete"
+                    if (keysIndex == keys.size() - 1) {
+                        String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+                        values.add("\"" + eventType + "\"");
+                    }
+                    keysIndex++;
                 }
 
                 // Print values
                 System.out.println(String.join("\t", values));
                 stringWriter.write(String.join("\t", values));
                 stringWriter.write("\n");
+
+                writer.write(String.join(",", values));
+                writer.newLine();
             }
 
             stringWriter.close();
+            writer.close();
+
             String result = stringWriter.toString();
-            System.out.println("Data has been written to output.txt");
+            System.out.println("Data has been written to output.csv");
             System.out.println(result);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
-    /**
-     * Recursively searches for a specific account ID within a JSON object and its nested objects.
-     * If the account ID is found, it returns the corresponding JSON object.
-     * If the account ID is not found, it returns null.
-     *
-     * @param jsonObject The JSON object to search within.
-     * @param accountId The account ID to search for.
-     * @return The JSON object containing the account ID if found, otherwise null.
-     */
-        public static JSONObject findAccountById(JSONObject jsonObject, String accountId) {
-            // Check if the current JSON object contains the accountId directly
-            if (jsonObject.has(accountId)) {
-                return jsonObject;
-            }
-
-            // If the current JSON object doesn't contain the accountId directly, check its nested objects
-            Iterator<String> keys = jsonObject.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                Object value = jsonObject.get(key);
-                if (value instanceof JSONObject) {
-                    // Recursively search nested objects
-                    JSONObject result = findAccountById((JSONObject) value, accountId);
-                    if (result != null) {
-                        return result;
-                    }
-                } else if (value instanceof JSONArray) {
-                    // If the value is an array, iterate over its elements and recursively search nested objects
-                    JSONArray jsonArray = (JSONArray) value;
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        if (jsonArray.get(i) instanceof JSONObject) {
-                            JSONObject result = findAccountById(jsonArray.getJSONObject(i), accountId);
-                            if (result != null) {
-                                return result;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // If accountId is not found in the current object or its nested objects, return null
-            return null;
-        }
-    /**
-     * Extracts the account ID from a JSON object by using the findAccountById method
-     * to search for the account ID within the given JSON object.
-     *
-     * @param account The JSON object representing the account.
-     * @return The account ID if found, otherwise null.
-     */
-        public static String extractAccountIdFromAccount(JSONObject account) {
-            // Call the findAccountById method with the account JSONObject and "accountId"
-            JSONObject accountObject = findAccountById(account, "accountId");
-
-            // If the accountObject is found, return its accountId value
-            if (accountObject != null && accountObject.has("accountId")) {
-                return accountObject.get("accountId").toString();
-            }
-
-            // If accountId is not found, return null
-            return null;
-        }
-
-
 
     /**
      * Recursively gets nested values from a JSON object.

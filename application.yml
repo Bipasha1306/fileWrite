@@ -1,4 +1,4 @@
-queryName : accountBenchmark
+queryName: accountByIds
 q1: |
   query accountByIds {
     accountByIds(id: [129583, 23980]) {
@@ -30,7 +30,6 @@ r1: |
       ]
     }
   }
-
 
 q2: |
   query accountBenchmark {
@@ -136,125 +135,6 @@ q3: |
           code
         }
       }
-      profitabilityChannel {
-        code
-        name
-      }
-      subBusinessSegment {
-        code
-      }
-      comment
-      spn
-      accountLegal {
-        primaryJpmLegalEntity {
-          code
-          name
-        }
-        discretionaryAuthority {
-          code
-        }
-        stateResident {
-          code
-        }
-        legalClassification {
-          code
-        }
-        delegatedJpmRoleEntity {
-          code
-          name
-        }
-        typeOfAgreement {
-          code
-          name
-        }
-        governingLawCountry {
-          code
-          name
-        }
-        delegatedJpmLegalEntity {
-          code
-          name
-        }
-        subDelegatedJpmLegalEntity {
-          code
-          name
-        }
-        fundManagerPartyId
-        fundRegulatoryLawCd {
-          code
-          name
-        }
-      }
-      countryOfResidence {
-        code
-      }
-      performance {
-        benchmarkCd1Index {
-          indexName
-        }
-        eligibilityFl
-      }
-      accountCustodianNumber
-      lastUpdatedDate
-      investmentDecision {
-        code
-        name
-      }
-      fundHierarchyType {
-        code
-      }
-      accountSubType {
-        code
-        name
-        description
-        accountType {
-          code
-          name
-        }
-      }
-      accountHierarchyType {
-        code
-        name
-      }
-      feeProcessingInfo {
-        billingBusinessUnit {
-          code
-          name
-        }
-      }
-      parentAccountHierarchy {
-        parentAccount {
-          investmentDecision {
-            code
-          }
-          accountHierarchyType {
-            code
-          }
-          primarySystem {
-            code
-          }
-          accountSubType {
-            code
-          }
-          accountStatusType {
-            code
-          }
-          endDate
-          subBusinessSegment {
-            code
-          }
-        }
-      }
-      erisaReportingFlag
-      accountTypeDetails {
-        planTypeCode
-      }
-      lob
-      lob1
-      partyCentralDetail {
-        spnCountryIsoCode
-        spnCountryName
-      }
     }
   }
 
@@ -294,86 +174,6 @@ r3: |
               "code": "SEPM"
             }
           },
-          "profitabilityChannel": null,
-          "subBusinessSegment": {
-            "code": "MFOS"
-          },
-          "comment": "Rebranded 13/09/05.",
-          "spn": "2508346",
-          "accountLegal": {
-            "primaryJpmLegalEntity": {
-              "code": "JP",
-              "name": "J.P. Morgan Investment Management Inc."
-            },
-            "discretionaryAuthority": {
-              "code": "1"
-            },
-            "stateResident": null,
-            "legalClassification": {
-              "code": "SICA"
-            },
-            "delegatedJpmRoleEntity": {
-              "code": "IM",
-              "name": "Investment Manager"
-            },
-            "typeOfAgreement": null,
-            "governingLawCountry": {
-              "code": "LU",
-              "name": "Luxembourg"
-            },
-            "delegatedJpmLegalEntity": {
-              "code": "JF",
-              "name": "JPMorgan Asset Management (Asia Pacific) Limited"
-            },
-            "subDelegatedJpmLegalEntity": null,
-            "fundManagerPartyId": 43157,
-            "fundRegulatoryLawCd": {
-              "code": "13",
-              "name": "UCITS Lux"
-            }
-          },
-          "countryOfResidence": {
-            "code": "LU"
-          },
-          "performance": {
-            "benchmarkCd1Index": null,
-            "eligibilityFl": "Y"
-          },
-          "accountCustodianNumber": "11247",
-          "lastUpdatedDate": "2022-11-29T21:15:21.923Z",
-          "investmentDecision": {
-            "code": "JPM",
-            "name": "Morgan IM Accounts"
-          },
-          "fundHierarchyType": {
-            "code": "STAN"
-          },
-          "accountSubType": {
-            "code": "int_fun_fun",
-            "name": "Fund",
-            "description": "Fund",
-            "accountType": {
-              "code": "int_fun",
-              "name": "Internal Fund"
-            }
-          },
-          "accountHierarchyType": {
-            "code": "standalone",
-            "name": "Stand-alone"
-          },
-          "feeProcessingInfo": {
-            "billingBusinessUnit": null
-          },
-          "parentAccountHierarchy": [ ],
-          "erisaReportingFlag": null,
-          "accountTypeDetails": {
-            "planTypeCode": null
-          },
-          "lob": null,
-          "partyCentralDetail": {
-            "spnCountryIsoCode": "LU",
-            "spnCountryName": "LUXEMBOURG"
-          }
         },
         {
           "accountId": 129583,
@@ -407,80 +207,6 @@ r3: |
               "code": "SEPM"
             }
           },
-          "profitabilityChannel": null,
-          "subBusinessSegment": {
-            "code": "MFOS"
-          },
-          "comment": "Rebranded 13/9/05. Name change from JPM EUR Global Bond Fund to JPM Global Bond Fund (EUR) effective 29/08/06.",
-          "spn": "2483343",
-          "accountLegal": {
-            "primaryJpmLegalEntity": {
-              "code": "CFUK",
-              "name": "JPMorgan Asset Management (UK) Limited"
-            },
-            "discretionaryAuthority": {
-              "code": "1"
-            },
-            "stateResident": null,
-            "legalClassification": {
-              "code": "SICA"
-            },
-            "delegatedJpmRoleEntity": {
-              "code": "NA",
-              "name": "N/A"
-            },
-            "typeOfAgreement": null,
-            "governingLawCountry": {
-              "code": "LU",
-              "name": "Luxembourg"
-            },
-            "delegatedJpmLegalEntity": {
-              "code": "NA",
-              "name": "N/A"
-            },
-            "subDelegatedJpmLegalEntity": null,
-            "fundManagerPartyId": null,
-            "fundRegulatoryLawCd": null
-          },
-          "countryOfResidence": {
-            "code": "LU"
-          },
-          "performance": {
-            "benchmarkCd1Index": null,
-            "eligibilityFl": "Y"
-          },
-          "accountCustodianNumber": "09984",
-          "lastUpdatedDate": "2018-10-22T19:44:03.963Z",
-          "investmentDecision": {
-            "code": "JPM",
-            "name": "Morgan IM Accounts"
-          },
-          "fundHierarchyType": {
-            "code": "SUBF"
-          },
-          "accountSubType": {
-            "code": "int_acc_none",
-            "name": "None",
-            "description": "None",
-            "accountType": {
-              "code": "int_acc",
-              "name": "Internal Account"
-            }
-          },
-          "accountHierarchyType": null,
-          "feeProcessingInfo": {
-            "billingBusinessUnit": null
-          },
-          "parentAccountHierarchy": [ ],
-          "erisaReportingFlag": null,
-          "accountTypeDetails": {
-            "planTypeCode": null
-          },
-          "lob": null,
-          "partyCentralDetail": {
-            "spnCountryIsoCode": "LU",
-            "spnCountryName": "LUXEMBOURG"
-          }
         }
       ]
     }
@@ -745,8 +471,6 @@ r5: |
       }
     }
   }
-
-
 
 q6: |
   query account {
