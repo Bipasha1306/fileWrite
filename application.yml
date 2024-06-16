@@ -494,11 +494,7 @@ q4: |
           accountId
           benchmarkCode
           benchmarkUniverse
-          benchmarkViewType 
-          {
-            id
-            name
-  }
+          benchmarkViewType
           endDate
           benchmarkTypeCode
             {
@@ -547,9 +543,9 @@ r4: |
               "accountId": 23980,
               "benchmarkCode": "WRLDRNRUSDO",
               "benchmarkUniverse": "CLOSING",
-              "benchmarkViewType": "NDO",
-              "endDate": null,
-              "benchmarkTypeCode": "Official"
+              "benchmarkViewType": "NOO",
+              "endDate": "2014-10-30",
+              "benchmarkTypeCode": null,
             }
           },
           {
@@ -559,7 +555,7 @@ r4: |
               "benchmarkUniverse": "CLOSING",
               "benchmarkViewType": "COB",
               "endDate": "2018-11-30",
-              "benchmarkTypeCode": "Official"
+              "benchmarkTypeCode": null,
             }
           },
           {
@@ -569,7 +565,7 @@ r4: |
               "benchmarkUniverse": "CLOSING",
               "benchmarkViewType": "COB",
               "endDate": "2014-09-30",
-              "benchmarkTypeCode": "Official"
+              "benchmarkTypeCode": null,
             }
           }
         ]
