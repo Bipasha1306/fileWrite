@@ -26,10 +26,10 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q3");
+            String q1 = (String) yamlData.get("q5");
             System.out.println(q1);
             // response
-            String r1 = (String) yamlData.get("r3");
+            String r1 = (String) yamlData.get("r5");
             System.out.println(r1);
 
             // Regular expression pattern to match the operation name
@@ -116,7 +116,7 @@ public class ReadYamlFile {
      * @param jsonResponse The JSON response string.
      * @param keys         The list of keys to extract data from JSON.
      * @param queryName    The query name to parse.
-     * @param stringWriter write the values and header
+     * @param eventTypeMap write the values and header
      */
     public static void storeDataInTXT(String jsonResponse, List<String> keys, String queryName, Map<String, Object> eventTypeMap) {
         StringWriter stringWriter = new StringWriter();
@@ -156,12 +156,12 @@ public class ReadYamlFile {
                     String[] nestedKeys = key.split("\\.");
                     String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
                     Object value = getValue(account, newKeys);
+                    values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
 
                     // Check if the current key is accountId
-                    if (nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(ACCOUNTIDKEY)) {
+                    if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(ACCOUNTIDKEY)) {
                         accountId = (value != null) ? value.toString() : null;
                     }
-                    values.add((value != null) ? "\"" + value.toString() + "\"" : "\"\"");
 
                     //if last iteration of for loop add "insert" or "delete"
                     if (keysIndex == keys.size() - 1) {
