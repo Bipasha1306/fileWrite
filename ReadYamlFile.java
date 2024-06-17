@@ -26,10 +26,10 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q5");
+            String q1 = (String) yamlData.get("q4");
             System.out.println(q1);
             // response
-            String r1 = (String) yamlData.get("r5");
+            String r1 = (String) yamlData.get("r4");
             System.out.println(r1);
 
             // Regular expression pattern to match the operation name
@@ -145,39 +145,56 @@ public class ReadYamlFile {
             // Iterate over the accounts in the JSON response
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject account = jsonArray.getJSONObject(i);
-
-                // Write data for the account
-                List<String> values = new ArrayList<>();
                 String accountId = null;
+                List<Integer> nestedArrSizes = new ArrayList<Integer>();
 
-                // Loop over each key to extract values
-                int keysIndex = 0;
+                // Get the size of all the nested JSONArray present inside this account
                 for (String key : keys) {
                     String[] nestedKeys = key.split("\\.");
                     String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
-                    Object value = getValue(account, newKeys);
-                    values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
-
-                    // Check if the current key is accountId
-                    if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(ACCOUNTIDKEY)) {
-                        accountId = (value != null) ? value.toString() : null;
+                    Object value = getValue(account, newKeys, null);
+                    if (value instanceof JSONArray) {
+                        nestedArrSizes.add(((JSONArray) value).length());
                     }
-
-                    //if last iteration of for loop add "insert" or "delete"
-                    if (keysIndex == keys.size() - 1) {
-                        String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
-                        values.add("\"" + eventType + "\"");
-                    }
-                    keysIndex++;
                 }
 
-                // Print values
-                System.out.println(String.join("\t", values));
-                stringWriter.write(String.join("\t", values));
-                stringWriter.write("\n");
+                //Maximum size of any nested JSONArray
+                int maxSize = nestedArrSizes.stream()
+                        .mapToInt(Integer::intValue)
+                        .max()
+                        .orElse(1);
 
-                writer.write(String.join(",", values));
-                writer.newLine();
+                for (int j = 0; j < maxSize; j++) {
+                    int keysIndex = 0;
+                    // Write data for the account
+                    List<String> values = new ArrayList<>();
+
+                    for (String key : keys) {
+                        String[] nestedKeys = key.split("\\.");
+                        String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                        Object value = getValue(account, newKeys, j);
+                        values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                        // Check if the current key is accountId
+                        if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(ACCOUNTIDKEY)) {
+                            accountId = (value != null) ? value.toString() : null;
+                        }
+
+                        //if last iteration of for loop add "insert" or "delete"
+                        if (keysIndex == keys.size() - 1) {
+                            String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+                            values.add("\"" + eventType + "\"");
+                        }
+                        keysIndex++;
+                    }
+                    // Print values
+                    System.out.println(String.join("\t", values));
+                    stringWriter.write(String.join("\t", values));
+                    stringWriter.write("\n");
+
+                    writer.write(String.join(",", values));
+                    writer.newLine();
+                }
             }
 
             stringWriter.close();
@@ -196,9 +213,10 @@ public class ReadYamlFile {
      *
      * @param jsonObject The JSON object.
      * @param keys       The array of keys representing the nested structure.
+     * @param arrayIndex If nested JSONArray is present then use this index to iterate
      * @return The value obtained from the JSON object.
      */
-    private static Object getValue(JSONObject jsonObject, String[] keys) {
+    private static Object getValue(JSONObject jsonObject, String[] keys, Integer arrayIndex) {
         JSONObject currentObject = jsonObject;
         for (String key : keys) {
             if (!currentObject.has(key)) {
@@ -214,7 +232,13 @@ public class ReadYamlFile {
                     return null;
                 } else {
                     // Assuming there's only one object in the array
-                    currentObject = jsonArray.getJSONObject(0);
+                    if (arrayIndex != null){
+                        if(jsonArray.isNull(arrayIndex)) return null;
+                        currentObject = jsonArray.getJSONObject(arrayIndex);
+                    }else{
+                        return jsonArray;
+                    }
+
                 }
             } else {
                 return value;

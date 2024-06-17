@@ -1,5 +1,8 @@
-accountHierarchy.edges.node.childAccount.accountId,accountHierarchy.edges.node.childAccount.code,accountHierarchy.edges.node.childAccount.shortName,accountHierarchy.edges.node.childAccount.primarySystem.code,accountHierarchy.edges.node.childAccount.accountStatusType.code,accountHierarchy.edges.node.childAccount.accountHierarchyType.code,accountHierarchy.edges.node.childAccount.accountHierarchyType.name,accountHierarchy.edges.node.parentAccount.accountId,accountHierarchy.edges.node.parentAccount.code,accountHierarchy.edges.node.parentAccount.shortName,accountHierarchy.edges.node.parentAccount.primarySystem.code,accountHierarchy.edges.node.parentAccount.accountStatusType.code,accountHierarchy.edges.node.parentAccount.accountStatusType.name,accountHierarchy.edges.node.parentAccount.accountHierarchyType.code,accountHierarchy.edges.node.parentAccount.accountHierarchyType.name
-"181834","71407","71407 -2- short nm","WSSL","A","standalone","Stand-alone","181837","593064","593064 -2- short nm","BNYL","CLOC","Closed - Outside custody","","","Insert"
-"181834","71407","71407 -2- short nm","WSSL","A","standalone","Stand-alone","181837","593064","593064 -2- short nm","BNYL","CLOC","Closed - Outside custody","","","Insert"
-"181835","536685","536685 -2- short nm","BNYL","CLOC","","","181837","593064","593064 -2- short nm","BNYL","CLOC","Closed - Outside custody","","",""
-"181835","536685","536685 -2- short nm","BNYL","CLOC","","","181837","593064","593064 -2- short nm","BNYL","CLOC","Closed - Outside custody","","",""
+accountBenchmark.edges.node.accountId,accountBenchmark.edges.node.benchmarkCode,accountBenchmark.edges.node.benchmarkUniverse,accountBenchmark.edges.node.benchmarkViewType,accountBenchmark.edges.node.endDate,accountBenchmark.edges.node.benchmarkTypeCode.code,accountBenchmark.edges.node.benchmarkTypeCode.name
+"23980","WRLDRNRUSDO","CLOSING","NDO","","123","Test1","Delete"
+"23980","WRLDRNRUSDO","CLOSING","NDO","","456","Test2","Delete"
+"23980","WRLDRNRUSDO","CLOSING","NDO","","789","Test3","Delete"
+"23980","WRLDRNRUSDO","CLOSING","NDO","","258","Test4","Delete"
+"23980","WRLDRNRUSDO","CLOSING","NOO","2014-10-30","","","Delete"
+"23980","BMK11247","CLOSING","COB","2018-11-30","","","Delete"
+"129583","LOND6033WOOD","CLOSING","COB","2014-09-30","","",""

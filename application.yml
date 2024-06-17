@@ -1,4 +1,4 @@
-queryName: accountHierarchy
+queryName: accountBenchmark
 q1: |
   query accountByIds {
     accountByIds(id: [129583, 23980]) {
