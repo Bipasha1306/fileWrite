@@ -1,3 +1,28 @@
 accountByIds.accountId	accountByIds.primarySystem.code	accountByIds.primarySystem.test.test1	accountByIds.primarySystem.test.test2	accountByIds.code	accountByIds.longName	accountByIds.shortName	accountByIds.briefName	accountByIds.accountStatusType.code	accountByIds.accountStatusType.name	accountByIds.accountType.code	accountByIds.startDate	accountByIds.endDate	accountByIds.fundingEvent.intendedFundingDate	accountByIds.fundingEvent.date	accountByIds.managementResponsibilityCenter.code	accountByIds.managementResponsibilityCenter.name	accountByIds.investmentSubVehicle.code	accountByIds.investmentSubVehicle.investmentVehicle.code	accountByIds.profitabilityChannel.code	accountByIds.profitabilityChannel.name	accountByIds.subBusinessSegment.code	accountByIds.comment	accountByIds.spn	accountByIds.partyCentralDetail.spnCountryIsoCode	accountByIds.partyCentralDetail.spnCountryName
 "23980"	"WSSL"	""	""	"11247"	"11247 - 2 - long nm"	"11247 -2- short nm"	"11247 -2"	"A"	"Active"	"N"	"1997-11-19"	""	""	""	"EQL"	"Equity JPM London"	"SEPM"	"SEPM"	""	""	"MFOS"	"Rebranded 13/09/05."	"2508346"	""	""	"Delete"
 "129583"	"WSSL"	""	""	"713601"	"713601 - 2 - long nm"	"713601 -2- short nm"	"713601 -2"	"CLOC"	"Closed - Outside custody"	"A"	"1998-10-26"	"2013-12-27"	""	""	"LOND"	"JPM London"	"SEPM"	"SEPM"	""	""	"MFOS"	"Rebranded 13/9/05. Name change from JPM EUR Global Bond Fund to JPM Global Bond Fund (EUR) effective 29/08/06."	"2483343"	""	""	"Delete"
+            // Iterate over the eventTypeMap to find account IDs marked for deletion
+            for (String accountId : eventTypeMap.keySet()) {
+                // Check if the eventType for this account is "Delete"
+                if (eventTypeMap.get(accountId).equals("Delete")) {
+                    // Check if the account ID is found in the JSON response
+                    boolean accountFound = false;
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject account = jsonArray.getJSONObject(i);
+                        String accountIdInResponse = extractAccountIdFromAccount(account);
+                        if (accountId.equals(accountIdInResponse)) {
+                            accountFound = true;
+                            break;
+                        }
+                    }
+                    // If the account ID is not found, write a "Hard Delete" entry
+                    if (!accountFound) {
+                        String[] hardDeleteValues = new String[keys.size() + 1];
+                        Arrays.fill(hardDeleteValues, "\"\"");
+                        hardDeleteValues[0] = "\"" + accountId + "\"";
+                        hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                        stringWriter.write(String.join("\t", hardDeleteValues));
+                        stringWriter.write("\n");
+                    }
+                }
+            }

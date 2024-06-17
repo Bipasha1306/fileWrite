@@ -5,4 +5,4 @@ accountBenchmark.edges.node.accountId,accountBenchmark.edges.node.benchmarkCode,
 "23980","WRLDRNRUSDO","CLOSING","NDO","","258","Test4","Delete"
 "23980","WRLDRNRUSDO","CLOSING","NOO","2014-10-30","","","Delete"
 "23980","BMK11247","CLOSING","COB","2018-11-30","","","Delete"
-"129583","LOND6033WOOD","CLOSING","COB","2014-09-30","","",""
+"129583","LOND6033WOOD","CLOSING","COB","2014-09-30","","","Insert"

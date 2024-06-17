@@ -51,10 +51,10 @@ public class ReadYamlFile {
             // Put dummy values into the map
             eventMap.put("181834", "Insert");
             eventMap.put("23980", "Delete");
-            //eventMap.put("129583", "Delete");
-//            eventMap.put("23", "Delete");
-//            eventMap.put("98", "Delete");
-//            eventMap.put("66", "Delete");
+            eventMap.put("129583", "Insert");
+            eventMap.put("23", "Delete");
+            eventMap.put("98", "Delete");
+            eventMap.put("66", "Delete");
 
             List<String> headers = extractKeysFromQuery(q1, queryName);
             System.out.println(headers);
@@ -130,6 +130,7 @@ public class ReadYamlFile {
             } else {
                 jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
             }
+            Map<String, Boolean> accountsFound = new HashMap<>();
 
             // Create a new list for headers
             List<String> headers = new ArrayList<>(keys);
@@ -178,6 +179,7 @@ public class ReadYamlFile {
                         // Check if the current key is accountId
                         if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(ACCOUNTIDKEY)) {
                             accountId = (value != null) ? value.toString() : null;
+                            accountsFound.put(accountId, true);
                         }
 
                         //if last iteration of for loop add "insert" or "delete"
@@ -196,7 +198,7 @@ public class ReadYamlFile {
                     writer.newLine();
                 }
             }
-
+            addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
             stringWriter.close();
             writer.close();
 
@@ -205,6 +207,33 @@ public class ReadYamlFile {
             System.out.println(result);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Adds "Hard Delete" entries to the result if the accountId is present in the eventTypeMap but not found in the JSON response.
+     * If an accountId is marked for deletion but not found in the JSON response, it writes a "Hard Delete" entry to the provided StringWriter.
+     *
+     * @param stringWriter   The StringWriter to append the "Hard Delete" entries to the CSV.
+     * @param keys           The list of keys corresponding to the JSON structure, used to determine the number of columns.
+     * @param eventTypeMap   A map containing account IDs as keys and their event types (e.g., "Insert", "Delete") as values.
+     * @param accountsFound  A map tracking account IDs that are already found in the JSON response. The keys are account IDs, and values are booleans indicating whether the account is found.
+     */
+    private static void addHardDelete(StringWriter stringWriter, List<String> keys, Map<String, Object> eventTypeMap, Map<String, Boolean> accountsFound) {
+        for (String accountId : eventTypeMap.keySet()) {
+            if (eventTypeMap.get(accountId).equals("Delete")) {
+                boolean accountFound = accountsFound.containsKey(accountId);
+
+                // If the account ID is not found, write a "Hard Delete" entry
+                if (!accountFound) {
+                    String[] hardDeleteValues = new String[keys.size() + 1];
+                    Arrays.fill(hardDeleteValues, "\"\"");
+                    hardDeleteValues[0] = "\"" + accountId + "\"";
+                    hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                    stringWriter.write(String.join("\t", hardDeleteValues));
+                    stringWriter.write("\n");
+                }
+            }
         }
     }
 
