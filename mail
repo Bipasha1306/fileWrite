@@ -1,0 +1,30 @@
+Subject: Clarification on Test Notification Data and Pending JIRA
+
+Dear Panda Team,
+
+I hope this message finds you well.
+
+As discussed with Vlad, I have a few queries and updates that I need your assistance with:
+
+1. **Test Notification Data**:
+    - We need the test notification party contact and contact location details. Currently, after consuming data from Kafka, we are only receiving notifications for `party` and `party_alt_code`. Could you please provide more information or guidance on how to obtain the complete details?
+
+2. **Party Central Details**:
+    - It is understood that you do not store party central details. Could you advise on whom we should reach out to for this information? Additionally, is there any existing method or process to obtain these details?
+
+3. **Pending JIRA on Party Group**:
+    - The JIRA ticket regarding the Party Group is still pending. Could you please provide an estimated time of arrival (ETA) for its resolution?
+
+4. **Accounts Notification**:
+    - For Accounts, could you confirm if you have already published notifications for the following Accounts event types? A confirmation on this will be highly appreciated.
+
+Your prompt response to these queries will be greatly helpful in our ongoing tasks.
+
+Thank you for your support and cooperation.
+
+Best regards,
+
+[Your Name]
+[Your Position]
+[Your Contact Information]
+[Your Company Name]
