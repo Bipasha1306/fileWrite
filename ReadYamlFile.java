@@ -26,10 +26,10 @@ public class ReadYamlFile {
             // queryName
             String queryName = (String) yamlData.get("queryName");
             // query
-            String q1 = (String) yamlData.get("q4");
+            String q1 = (String) yamlData.get("q7");
             System.out.println(q1);
             // response
-            String r1 = (String) yamlData.get("r4");
+            String r1 = (String) yamlData.get("r7");
             System.out.println(r1);
 
             // Regular expression pattern to match the operation name

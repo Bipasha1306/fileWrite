@@ -1,4 +1,4 @@
-queryName: accountBenchmark
+queryName: account
 q1: |
   query accountByIds {
     accountByIds(id: [129583, 23980]) {
@@ -527,6 +527,336 @@ r6: |
                   }
                 }
               }
+            }
+          }
+        ]
+      }
+    }
+  }
+
+q7: |
+  {
+    account(id: [140]) {
+      edges {
+        node {
+          accountId
+          code
+          longName
+          sortName
+          briefName
+          primarySystem {
+            code
+          }
+          ownedByAccount {
+            account {
+              accountId
+              code
+            }
+          }
+          fundHierarchyType {
+            code
+            description
+            name
+          }
+          contacts {
+            accountId
+            personId
+            employingParty {
+              briefName
+            }
+            startDate
+            endDate
+            employingPartyRoleCode
+            employingPartyId
+            standardId
+            contactType {
+              code
+              name
+              internalFlag
+              partyFlag
+            }
+            lastName
+            middleName
+            firstName
+            updateDateTime
+            contactLocation {
+              extActive
+              extMastered
+              endDate
+            }
+          }
+        }
+      }
+    }
+  }
+
+r7: |
+  {
+    "data": {
+      "account": {
+        "edges": [
+          {
+            "node": {
+              "accountId": 140,
+              "code": "534780",
+              "longName": "534780 - 2 - long nm",
+              "sortName": "534780-2",
+              "briefName": "534780 -2",
+              "primarySystem": {
+                "code": "BNYL"
+              },
+              "ownedByAccount": {
+                "account": {
+                  "accountId": 140,
+                  "code": "534780"
+                }
+              },
+              "fundHierarchyType": {
+                "code": "STAN",
+                "description": "NULL",
+                "name": "Stand-alone"
+              },
+              "contacts": [
+                {
+                  "accountId": 140,
+                  "personId": 31817,
+                  "employingParty": {
+                    "briefName": "JPMAM"
+                  },
+                  "startDate": "2001-09-27",
+                  "endDate": null,
+                  "employingPartyRoleCode": "JPMU",
+                  "employingPartyId": 1137,
+                  "standardId": "U442272",
+                  "contactType": {
+                    "code": "ADRR",
+                    "name": "Internal report recipient/sender",
+                    "internalFlag": "Y",
+                    "partyFlag": "N"
+                  },
+                  "lastName": "Caraway",
+                  "middleName": "",
+                  "firstName": "Mark",
+                  "updateDateTime": "2001-09-27T09:57:25.207Z",
+                  "contactLocation": {
+                    "extActive": null,
+                    "extMastered": null,
+                    "endDate": null
+                  }
+                },
+                {
+                  "accountId": 140,
+                  "personId": 20000,
+                  "employingParty": {
+                    "briefName": "STATE STREET GLO"
+                  },
+                  "startDate": "1999-02-12",
+                  "endDate": null,
+                  "employingPartyRoleCode": "FANT",
+                  "employingPartyId": 656,
+                  "standardId": null,
+                  "contactType": {
+                    "code": "ACTG",
+                    "name": "Accounting",
+                    "internalFlag": "N",
+                    "partyFlag": "Y"
+                  },
+                  "lastName": "Last Nm 2 20000",
+                  "middleName": "Middle Nm 2 20000",
+                  "firstName": "First Nm 2 20000",
+                  "updateDateTime": "1999-02-12T20:34:39.783Z",
+                  "contactLocation": {
+                    "extActive": null,
+                    "extMastered": null,
+                    "endDate": null
+                  }
+                },
+                {
+                  "accountId": 140,
+                  "personId": 17717,
+                  "employingParty": {
+                    "briefName": "JPMORGAN CHASE B"
+                  },
+                  "startDate": "1999-10-05",
+                  "endDate": null,
+                  "employingPartyRoleCode": "CUST",
+                  "employingPartyId": 244,
+                  "standardId": null,
+                  "contactType": {
+                    "code": "CUST",
+                    "name": "Custodian",
+                    "internalFlag": "N",
+                    "partyFlag": "N"
+                  },
+                  "lastName": "Last Nm 2 17717",
+                  "middleName": "Middle Nm 2 17717",
+                  "firstName": "First Nm 2 17717",
+                  "updateDateTime": "1999-10-05T16:38:04.5Z",
+                  "contactLocation": {
+                    "extActive": null,
+                    "extMastered": null,
+                    "endDate": null
+                  }
+                },
+                {
+                  "accountId": 140,
+                  "personId": 30726,
+                  "employingParty": {
+                    "briefName": "JPMAM"
+                  },
+                  "startDate": "2002-06-21",
+                  "endDate": null,
+                  "employingPartyRoleCode": "JPMU",
+                  "employingPartyId": 1137,
+                  "standardId": "U903042",
+                  "contactType": {
+                    "code": "PRPM",
+                    "name": "Investment Specialist",
+                    "internalFlag": "Y",
+                    "partyFlag": "N"
+                  },
+                  "lastName": "Schmidt",
+                  "middleName": "",
+                  "firstName": "Richard",
+                  "updateDateTime": "2013-11-15T00:47:55.753Z",
+                  "contactLocation": {
+                    "extActive": null,
+                    "extMastered": null,
+                    "endDate": null
+                  }
+                },
+                {
+                  "accountId": 140,
+                  "personId": 28903,
+                  "employingParty": {
+                    "briefName": "INSIGNIS INC"
+                  },
+                  "startDate": "2001-02-13",
+                  "endDate": null,
+                  "employingPartyRoleCode": "PROV",
+                  "employingPartyId": 47832,
+                  "standardId": null,
+                  "contactType": {
+                    "code": "ADMN",
+                    "name": "Administrative",
+                    "internalFlag": "N",
+                    "partyFlag": "Y"
+                  },
+                  "lastName": "Last Nm 2 28903",
+                  "middleName": "Middle Nm 2 28903",
+                  "firstName": "First Nm 2 28903",
+                  "updateDateTime": "2019-06-03T22:58:15.05Z",
+                  "contactLocation": {
+                    "extActive": "Y",
+                    "extMastered": "Y",
+                    "endDate": null
+                  }
+                },
+                {
+                  "accountId": 140,
+                  "personId": 14763,
+                  "employingParty": {
+                    "briefName": "ADEEYO INSURANCE"
+                  },
+                  "startDate": "1999-11-26",
+                  "endDate": null,
+                  "employingPartyRoleCode": "OADV",
+                  "employingPartyId": 7093,
+                  "standardId": null,
+                  "contactType": {
+                    "code": "OADV",
+                    "name": "Advisor",
+                    "internalFlag": "N",
+                    "partyFlag": "Y"
+                  },
+                  "lastName": "Last Nm 2 14763",
+                  "middleName": "Middle Nm 2 14763",
+                  "firstName": "First Nm 2 14763",
+                  "updateDateTime": "2019-01-04T23:36:08.23Z",
+                  "contactLocation": {
+                    "extActive": "Y",
+                    "extMastered": "Y",
+                    "endDate": null
+                  }
+                },
+                {
+                  "accountId": 140,
+                  "personId": 39059,
+                  "employingParty": {
+                    "briefName": "JPMAM"
+                  },
+                  "startDate": "2003-04-03",
+                  "endDate": null,
+                  "employingPartyRoleCode": "JPMU",
+                  "employingPartyId": 1137,
+                  "standardId": "U684360",
+                  "contactType": {
+                    "code": "ADMA",
+                    "name": "Administrative Assistant",
+                    "internalFlag": "Y",
+                    "partyFlag": "N"
+                  },
+                  "lastName": "Ellis",
+                  "middleName": null,
+                  "firstName": "Sharon",
+                  "updateDateTime": "2014-05-12T23:29:59.47Z",
+                  "contactLocation": {
+                    "extActive": "Y",
+                    "extMastered": "Y",
+                    "endDate": null
+                  }
+                }
+              ] 
+            }
+          }
+        ]
+      }
+    }
+  }
+q8 : |
+  {
+    account(id: [15736]) {
+      edges {
+        node {
+          accountId
+          code
+          primarySystem {
+            code
+          }
+          accountGroupContents(groupCodes: ["RSCHCHRG"]) {
+            accountGroup {
+              groupCode
+              groupName
+            }
+          }
+        }
+      }
+    }
+  }
+
+
+
+
+r8 : |
+  {
+    "data": {
+      "account": {
+        "edges": [
+          {
+            "node": {
+              "accountId": 15736,
+              "code": "71441",
+              "primarySystem": {
+                "code": "WSSL"
+              },
+              "accountGroupContents": [
+                {
+                  "accountGroup": {
+                    "groupCode": "RSCHCHRG",
+                    "groupName": "Research Charge Account Group"
+                  }
+                }
+              ]
             }
           }
         ]
