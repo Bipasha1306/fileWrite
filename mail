@@ -16,15 +16,28 @@ As discussed with Vlad, I have a few queries and updates that I need your assist
     - The JIRA ticket regarding the Party Group is still pending. Could you please provide an estimated time of arrival (ETA) for its resolution?
 
 4. **Accounts Notification**:
-    - For Accounts, could you confirm if you have already published notifications for the following Accounts event types? A confirmation on this will be highly appreciated.
+    - For Accounts, could you confirm if you have already published notifications for the following Accounts event types? A confirmation on this will be highly appreciated:
+        - Account Benchmark
+        - Account Hierarchy
+        - AccountParty
+        - AccountProduct
+        - AccountGroup
+        - AccountGroupContents
 
-Your prompt response to these queries will be greatly helpful in our ongoing tasks.
+Additionally, we have a doubt regarding the account alt code. It appears that you have these keys, but the GraphQL query we have for accountAltcode only includes accountId as a key. Could you clarify this for us?
+
+For reference, here is the query we are using:
+```
+<query>
+```
+
+Your prompt response to these queries will be greatly appreciated and will aid us significantly in our ongoing tasks.
 
 Thank you for your support and cooperation.
 
 Best regards,
 
-[Your Name]
-[Your Position]
-[Your Contact Information]
+[Your Name]  
+[Your Position]  
+[Your Contact Information]  
 [Your Company Name]
