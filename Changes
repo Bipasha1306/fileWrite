@@ -1,0 +1,38 @@
+public Map<String, Object> getFilters(Map<String, List<String>> entityAndFilterColumn) {
+    Map<String, Object> result = new LinkedHashMap<>();
+    entityAndFilterColumn.forEach((key, values) -> {
+        log.info(" key -------------------------------" + key);
+        List<NotificationDetails> notificationDetailsList = notificationRepository.findAllByIsProcessedAndSourceSystemAndEntityName(
+                "N", "panda", key);
+        List<String> filters = new ArrayList<>();
+
+        for (NotificationDetails notificationDetails : notificationDetailsList) {
+            try {
+                if ("N".equals(notificationDetails.getIsProcessed())) {
+                    processNotificationDetails(notificationDetails, values, filters); // looping to find matching values
+                } else if ("Y".equals(notificationDetails.getIsProcessed())) {
+                    // Log a message when isProcessed is "Y"
+                    log.info("Skipping processing for NotificationDetails with isProcessed = Y");
+                    // Skip to the next iteration
+                }
+            } catch (JsonProcessingException e) {
+                // Log the exception without throwing it
+                log.error("Error processing NotificationDetails", e);
+            }
+        }
+
+        result.put(key, filters);
+    });
+
+    return result;
+}
+
+private void processNotificationDetails(NotificationDetails notificationDetails, List<String> values, List<String> filters)
+        throws JsonProcessingException {
+    notificationDetails.getKeysAsMap().forEach((key2, value2) -> {
+        if (values.contains(key2)) {
+            eventTypemap.put(value2, notificationDetails.getEventType());
+            filters.add(value2);
+        }
+    });
+}
