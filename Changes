@@ -36,3 +36,30 @@ private void processNotificationDetails(NotificationDetails notificationDetails,
         }
     });
 }
+
+
+--------------------------------------
+
+/**
+ * Method to map the filter IDs columns to the correct one
+ * @param filterMap the map of the entity and list of column names
+ * @return filter the concatenated string of mapped filter IDs
+ */
+public String getCurrentFilter(Map<String, List<String>> filterMap){
+    StringBuilder filter = new StringBuilder();
+
+    for (List<String> values : filterMap.values()) {
+        for (String value : values) {
+            if (value.equals("account_id")) {
+                filter.append("accountId");
+            } else if (value.equals("party_id")) {
+                filter.append("partyId");
+            } else {
+                filter.append(value);
+            }
+        }
+    }
+
+    return filter.toString();
+}
+
