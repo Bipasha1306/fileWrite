@@ -1,0 +1,66 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+public class PandaListenerServiceTest {
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @InjectMocks
+    private PandaListenerService pandaListenerService;
+
+    private ObjectMapper objectMapper;
+    private SimpleDateFormat dateFormat;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
+    }
+
+    @Test
+    void testStoreConsumeEventsInDB() throws Exception {
+        // Sample JSON message
+        String messages = "{\"timestamp\":\"2023-06-25T15:30:45.123456+00:00\",\"keys\":\"someKeys\",\"eventId\":\"1234\",\"entityName\":\"Entity\",\"eventType\":\"Type\",\"towerCode\":\"Code\"}";
+
+        // Call the method to test
+        pandaListenerService.storeConsumeEventsInDB(messages);
+
+        // Capture the argument passed to the save method
+        ArgumentCaptor<NotificationDetails> notificationDetailsCaptor = ArgumentCaptor.forClass(NotificationDetails.class);
+        verify(notificationRepository, times(1)).save(notificationDetailsCaptor.capture());
+
+        // Verify the properties of the captured NotificationDetails object
+        NotificationDetails capturedNotificationDetails = notificationDetailsCaptor.getValue();
+        assertEquals("someKeys", capturedNotificationDetails.getKeys());
+        assertEquals("1234", capturedNotificationDetails.getEventId());
+        assertEquals("Entity", capturedNotificationDetails.getEntityName());
+        assertEquals("Type", capturedNotificationDetails.getEventType());
+        assertEquals("Code", capturedNotificationDetails.getSourceSystem());
+        assertEquals("N", capturedNotificationDetails.getIsProcessed());
+        assertEquals("From Panda", capturedNotificationDetails.getComments());
+
+        // Verify the date fields
+        Date expectedDate = dateFormat.parse("2023-06-25T15:30:45.123456+00:00");
+        assertEquals(expectedDate, capturedNotificationDetails.getCycleDate());
+        assertEquals(expectedDate, capturedNotificationDetails.getNotificationDate());
+    }
+}
