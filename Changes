@@ -1,103 +1,57 @@
-public Map<String, Object> getFilters(Map<String, List<String>> entityAndFilterColumn) {
-    Map<String, Object> result = new LinkedHashMap<>();
-    entityAndFilterColumn.forEach((key, values) -> {
-        log.info(" key -------------------------------" + key);
-        List<NotificationDetails> notificationDetailsList = notificationRepository.findAllByIsProcessedAndSourceSystemAndEntityName(
-                "N", "panda", key);
-        List<String> filters = new ArrayList<>();
+ /**
+     * This method processes a map of entities and their corresponding filter columns, where each entity key is associated 
+     * with a list of filter criteria. For each entity, it retrieves a list of NotificationDetails that are not yet processed 
+     * (isProcessed = "N") and matches a specific source system and entity name. It then processes these NotificationDetails 
+     * based on the filter criteria, collects the results, and returns a map of the processed filters for each entity.
+     *
+     * @param entityAndFilterColumn a map where the key is the entity name and the value is a list of filter criteria.
+     * @return a map where the key is the entity name and the value is a list of processed filters.
+     */
+    public Map<String, List<Object>> getFilters(Map<String, List<String>> entityAndFilterColumn) {
+        Map<String, List<Object>> result = new LinkedHashMap<>();
+        entityAndFilterColumn.forEach((key, values) -> {
+            System.out.println(" key -------------------------------" + key);
+            List<NotificationDetails> notificationDetailsList = notificationRepository.findAllByIsProcessedAndSourceSystemAndEntityName(
+                    "N", "panda", key);
+            List<Object> filters = new ArrayList<>();
 
-        for (NotificationDetails notificationDetails : notificationDetailsList) {
-            try {
-                if ("N".equals(notificationDetails.getIsProcessed())) {
-                    processNotificationDetails(notificationDetails, values, filters); // looping to find matching values
-                } else if ("Y".equals(notificationDetails.getIsProcessed())) {
-                    // Log a message when isProcessed is "Y"
-                    log.info("Skipping processing for NotificationDetails with isProcessed = Y");
-                    // Skip to the next iteration
+            for (NotificationDetails notificationDetails : notificationDetailsList) {
+                try {
+                    if ("N".equals(notificationDetails.getIsProcessed())) {
+                        processNotificationDetails(notificationDetails, values, filters); // looping to find matching values
+                    } else if ("Y".equals(notificationDetails.getIsProcessed())) {
+                        // Log a message when isProcessed is "Y"
+                        System.out.println("Skipping processing for NotificationDetails with isProcessed = Y");
+                        // Skip to the next iteration
+                    }
+                } catch (JsonProcessingException e) {
+                    // Log the exception without throwing it
+                    System.err.println("Error processing NotificationDetails: " + e.getMessage());
                 }
-            } catch (JsonProcessingException e) {
-                // Log the exception without throwing it
-                log.error("Error processing NotificationDetails", e);
             }
-        }
 
-        result.put(key, filters);
-    });
+            result.put(key, filters);
+        });
 
-    return result;
-}
-
-private void processNotificationDetails(NotificationDetails notificationDetails, List<String> values, List<String> filters)
-        throws JsonProcessingException {
-    notificationDetails.getKeysAsMap().forEach((key2, value2) -> {
-        if (values.contains(key2)) {
-            eventTypemap.put(value2, notificationDetails.getEventType());
-            filters.add(value2);
-        }
-    });
-}
-
-
---------------------------------------
-
-/**
- * Method to map the filter IDs columns to the correct one
- * @param filterMap the map of the entity and list of column names
- * @return filter the concatenated string of mapped filter IDs
- */
-public String getCurrentFilter(Map<String, List<String>> filterMap){
-    StringBuilder filter = new StringBuilder();
-
-    for (List<String> values : filterMap.values()) {
-        for (String value : values) {
-            if (value.equals("account_id")) {
-                filter.append("accountId");
-            } else if (value.equals("party_id")) {
-                filter.append("partyId");
-            } else {
-                filter.append(value);
-            }
-        }
+        return result;
     }
 
-    return filter.toString();
-}
-
--------------------------------------------------------------
-/**
- * Method to map the filter IDs columns to the correct one.
- * @param filterMap the map of the entity and list of column names.
- * @return the first mapped filter ID from the list or the original value if no mapping is found.
- */
-public String getCurrentFilter(Map<String, List<String>> filterMap){
-    for (List<String> values : filterMap.values()) {
-        for (String value : values) {
-            if (value.equals("account_id")) {
-                return "accountId";
-            } else if (value.equals("party_id")) {
-                return "partyId";
-            } else {
-                // If no specific mapping is found, we return the first unmatched value.
-                return value;
+    /**
+     * This method processes a NotificationDetails object based on a list of filter criteria. It loops through the keys and 
+     * values of the notification details, and if a key matches any of the provided filter criteria, it adds an entry to the 
+     * eventTypemap and adds the value to the filters list.
+     *
+     * @param notificationDetails the notification details to be processed.
+     * @param values the list of filter criteria.
+     * @param filters the list to which matching values are added.
+     * @throws JsonProcessingException if there is an error processing the JSON content.
+     */
+    private void processNotificationDetails(NotificationDetails notificationDetails, List<String> values, List<Object> filters)
+            throws JsonProcessingException {
+        notificationDetails.getKeysAsMap().forEach((key2, value2) -> {
+            if (values.contains(key2)) {
+                eventTypemap.put(value2, notificationDetails.getEventType());
+                filters.add(value2);
             }
-        }
+        });
     }
-
-    // Return empty if filterMap is empty or no values are found
-    return "";
-}
-
-public static void main(String[] args) {
-    // Sample input
-    Map<String, List<String>> filterMap = new HashMap<>();
-    filterMap.put("AltCode", Arrays.asList("party_id", "AltCd"));
-
-    FilterMapper mapper = new FilterMapper();
-    String result = mapper.getCurrentFilter(filterMap);
-
-    // Expected output: "partyId"
-    System.out.println(result);
-}
-
-
-
