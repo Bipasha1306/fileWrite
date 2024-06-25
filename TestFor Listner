@@ -252,7 +252,7 @@ public class PandaListenerServiceTest {
     @Test
     void testStoreConsumeEventsInDB() throws Exception {
         // Sample JSON message
-        String messages = "{\"timestamp\":\"2024-04-16T00:00:00.000000+00:00\",\"keys\":\"{\\\"party_id\\\":\\\"168694\\\",\\\"alt_code_type_cd\\\":\\\"CDM_ID\\\"}\",\"eventId\":\"36200805\",\"entityName\":\"AltCode\",\"eventType\":\"INSERT\",\"towerCode\":\"panda\"}";
+        String messages = "{\"timestamp\":\"2024-04-16T00:00:00.000000+00:00\",\"keys\":{\"party_id\":\"168694\",\"alt_code_type_cd\":\"CDM_ID\"},\"eventId\":\"36200805\",\"entityName\":\"AltCode\",\"eventType\":\"INSERT\",\"towerCode\":\"panda\"}";
 
         // Call the method to test
         pandaListenerService.storeConsumeEventsInDB(messages);
@@ -263,10 +263,10 @@ public class PandaListenerServiceTest {
 
         // Verify the properties of the captured NotificationDetails object
         NotificationDetails capturedNotificationDetails = notificationDetailsCaptor.getValue();
-        
+
         // Deserialize the 'keys' field to a JSON string for comparison
-        String expectedKeys = "{\"party_id\":\"168694\",\"alt_code_type_cd\":\"CDM_ID\"}";
-        String actualKeys = capturedNotificationDetails.getNotification();
+        JsonNode expectedKeys = objectMapper.readTree("{\"party_id\":\"168694\",\"alt_code_type_cd\":\"CDM_ID\"}");
+        JsonNode actualKeys = objectMapper.readTree(capturedNotificationDetails.getNotification());
         assertEquals(expectedKeys, actualKeys);
         
         assertEquals("36200805", capturedNotificationDetails.getEventId());
@@ -286,3 +286,4 @@ public class PandaListenerServiceTest {
         assertEquals("SYSTEM", capturedNotificationDetails.getAuditUpdatedBy());
     }
 }
+
