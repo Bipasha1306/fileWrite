@@ -135,7 +135,7 @@ public class PandaListenerServiceTest {
     }
 
 
-
+}
 
 ----------------------------------------------------------- take 3
 import com.fasterxml.jackson.databind.JsonNode;
@@ -188,9 +188,12 @@ public class PandaListenerServiceTest {
 
         // Verify the properties of the captured NotificationDetails object
         NotificationDetails capturedNotificationDetails = notificationDetailsCaptor.getValue();
+        
+        // Deserialize the 'notification' field to JsonNode for comparison
         JsonNode expectedNotification = objectMapper.readTree("{\"party_id\":\"168694\",\"alt_code_type_cd\":\"CDM_ID\"}");
         JsonNode actualNotification = objectMapper.readTree(capturedNotificationDetails.getNotification());
         assertEquals(expectedNotification, actualNotification);
+        
         assertEquals("36200805", capturedNotificationDetails.getEventId());
         assertEquals("AltCode", capturedNotificationDetails.getEntityName());
         assertEquals("INSERT", capturedNotificationDetails.getEventType());
@@ -207,6 +210,4 @@ public class PandaListenerServiceTest {
         assertEquals("SYSTEM", capturedNotificationDetails.getAuditCreateBy());
         assertEquals("SYSTEM", capturedNotificationDetails.getAuditUpdatedBy());
     }
-}
-
 }
