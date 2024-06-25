@@ -63,3 +63,41 @@ public String getCurrentFilter(Map<String, List<String>> filterMap){
     return filter.toString();
 }
 
+-------------------------------------------------------------
+/**
+ * Method to map the filter IDs columns to the correct one.
+ * @param filterMap the map of the entity and list of column names.
+ * @return the first mapped filter ID from the list or the original value if no mapping is found.
+ */
+public String getCurrentFilter(Map<String, List<String>> filterMap){
+    StringBuilder filter = new StringBuilder();
+
+    for (List<String> values : filterMap.values()) {
+        for (String value : values) {
+            if (value.equals("account_id")) {
+                return "accountId";
+            } else if (value.equals("party_id")) {
+                return "partyId";
+            } else {
+                // if no specific mapping is found, we return the first unmatched value.
+                return value;
+            }
+        }
+    }
+
+    return filter.toString();
+}
+
+public static void main(String[] args) {
+    // Sample input
+    Map<String, List<String>> filterMap = new HashMap<>();
+    filterMap.put("AltCode", Arrays.asList("party_id", "AltCd"));
+
+    FilterMapper mapper = new FilterMapper();
+    String result = mapper.getCurrentFilter(filterMap);
+
+    // Expected output: "partyId"
+    System.out.println(result);
+}
+
+
