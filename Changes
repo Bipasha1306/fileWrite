@@ -70,8 +70,6 @@ public String getCurrentFilter(Map<String, List<String>> filterMap){
  * @return the first mapped filter ID from the list or the original value if no mapping is found.
  */
 public String getCurrentFilter(Map<String, List<String>> filterMap){
-    StringBuilder filter = new StringBuilder();
-
     for (List<String> values : filterMap.values()) {
         for (String value : values) {
             if (value.equals("account_id")) {
@@ -79,13 +77,14 @@ public String getCurrentFilter(Map<String, List<String>> filterMap){
             } else if (value.equals("party_id")) {
                 return "partyId";
             } else {
-                // if no specific mapping is found, we return the first unmatched value.
+                // If no specific mapping is found, we return the first unmatched value.
                 return value;
             }
         }
     }
 
-    return filter.toString();
+    // Return empty if filterMap is empty or no values are found
+    return "";
 }
 
 public static void main(String[] args) {
@@ -99,5 +98,6 @@ public static void main(String[] args) {
     // Expected output: "partyId"
     System.out.println(result);
 }
+
 
 
