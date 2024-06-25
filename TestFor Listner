@@ -211,3 +211,78 @@ public class PandaListenerServiceTest {
         assertEquals("SYSTEM", capturedNotificationDetails.getAuditUpdatedBy());
     }
 }
+//////////////////////////////////////////////////////////////////////////// tKE 4
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+public class PandaListenerServiceTest {
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @InjectMocks
+    private PandaListenerService pandaListenerService;
+
+    private ObjectMapper objectMapper;
+    private SimpleDateFormat dateFormat;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
+    }
+
+    @Test
+    void testStoreConsumeEventsInDB() throws Exception {
+        // Sample JSON message
+        String messages = "{\"timestamp\":\"2024-04-16T00:00:00.000000+00:00\",\"keys\":\"{\\\"party_id\\\":\\\"168694\\\",\\\"alt_code_type_cd\\\":\\\"CDM_ID\\\"}\",\"eventId\":\"36200805\",\"entityName\":\"AltCode\",\"eventType\":\"INSERT\",\"towerCode\":\"panda\"}";
+
+        // Call the method to test
+        pandaListenerService.storeConsumeEventsInDB(messages);
+
+        // Capture the argument passed to the save method
+        ArgumentCaptor<NotificationDetails> notificationDetailsCaptor = ArgumentCaptor.forClass(NotificationDetails.class);
+        verify(notificationRepository, times(1)).save(notificationDetailsCaptor.capture());
+
+        // Verify the properties of the captured NotificationDetails object
+        NotificationDetails capturedNotificationDetails = notificationDetailsCaptor.getValue();
+        
+        // Deserialize the 'keys' field to a JSON string for comparison
+        String expectedKeys = "{\"party_id\":\"168694\",\"alt_code_type_cd\":\"CDM_ID\"}";
+        String actualKeys = capturedNotificationDetails.getNotification();
+        assertEquals(expectedKeys, actualKeys);
+        
+        assertEquals("36200805", capturedNotificationDetails.getEventId());
+        assertEquals("AltCode", capturedNotificationDetails.getEntityName());
+        assertEquals("INSERT", capturedNotificationDetails.getEventType());
+        assertEquals("panda", capturedNotificationDetails.getSourceSystem());
+        assertEquals("N", capturedNotificationDetails.getIsProcessed());
+        assertEquals("From Panda", capturedNotificationDetails.getComments());
+
+        // Verify the date fields
+        Date expectedDate = dateFormat.parse("2024-04-16T00:00:00.000000+00:00");
+        assertEquals(expectedDate, capturedNotificationDetails.getCycleDate());
+        assertEquals(expectedDate, capturedNotificationDetails.getNotificationDate());
+
+        // Verify audit fields
+        assertEquals("SYSTEM", capturedNotificationDetails.getAuditCreateBy());
+        assertEquals("SYSTEM", capturedNotificationDetails.getAuditUpdatedBy());
+    }
+}
