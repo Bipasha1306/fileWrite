@@ -1,0 +1,49 @@
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.MessageHeaders;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class PandaNotificationListenerTest {
+
+    @Mock
+    private CustomKafkaListenerRegistry customKafkaListenerRegistry;
+
+    @Mock
+    private PandaListenerService pandaListenerService;
+
+    @InjectMocks
+    private PandaNotificationListener pandaNotificationListener;
+
+    @BeforeEach
+    void setUp() {
+        // Any setup can be done here if needed
+    }
+
+    @Test
+    void testConsumeFromKafka() throws BusinessException {
+        pandaNotificationListener.consumeFromKafka();
+
+        verify(customKafkaListenerRegistry, times(1)).registerListenerContainer("panda-topic-listener-id");
+    }
+
+    @Test
+    void testOnMessage() throws BusinessException {
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "test message");
+
+        pandaNotificationListener.onMessage(consumerRecord);
+
+        verify(pandaListenerService, times(1)).storeConsumeEventsInDb("test message");
+    }
+}
