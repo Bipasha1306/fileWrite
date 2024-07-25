@@ -1,0 +1,160 @@
+To map the table mapping entity class (`NotificationDetails`) to a JSON response entity class, we need to:
+
+1. Create a POJO for the JSON response.
+2. Map the JSON response to the `NotificationDetails` entity in the repository.
+
+### Step 1: Create a POJO for the JSON Response
+
+Create a new class `NotificationJson` to represent the JSON response.
+
+```java
+import java.util.Map;
+
+public class NotificationJson {
+
+    private String towerCode;
+    private String[] attributes;
+    private Map<String, String> keys;
+    private String entityName;
+    private String data;
+    private String eventId;
+    private String traceId;
+    private String eventType;
+    private long timestamp;
+
+    // Getters and setters
+    public String getTowerCode() {
+        return towerCode;
+    }
+
+    public void setTowerCode(String towerCode) {
+        this.towerCode = towerCode;
+    }
+
+    public String[] getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(String[] attributes) {
+        this.attributes = attributes;
+    }
+
+    public Map<String, String> getKeys() {
+        return keys;
+    }
+
+    public void setKeys(Map<String, String> keys) {
+        this.keys = keys;
+    }
+
+    public String getEntityName() {
+        return entityName;
+    }
+
+    public void setEntityName(String entityName) {
+        this.entityName = entityName;
+    }
+
+    public String getData() {
+        return data;
+    }
+
+    public void setData(String data) {
+        this.data = data;
+    }
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public void setEventType(String eventType) {
+        this.eventType = eventType;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+}
+```
+
+### Step 2: Map the JSON Response to the `NotificationDetails` Entity in the Repository
+
+Modify the service class to map the `NotificationJson` to the `NotificationDetails` entity and save it to the database.
+
+```java
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+@Service
+public class PandaListenerService {
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
+
+    public void storeConsumeEventsInDb(String messages) throws JsonProcessingException, ParseException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        NotificationJson notificationJson = objectMapper.readValue(messages, NotificationJson.class);
+
+        NotificationDetails notificationDetails = new NotificationDetails();
+        notificationDetails.setTowerCode(notificationJson.getTowerCode());
+        notificationDetails.setAttributes(String.join(",", notificationJson.getAttributes()));
+        notificationDetails.setKeys(notificationJson.getKeys().toString());
+        notificationDetails.setEntityName(notificationJson.getEntityName());
+        notificationDetails.setData(notificationJson.getData());
+        notificationDetails.setEventId(notificationJson.getEventId());
+        notificationDetails.setTraceId(notificationJson.getTraceId());
+        notificationDetails.setEventType(notificationJson.getEventType());
+        notificationDetails.setTimestamp(new Date(notificationJson.getTimestamp()));
+        notificationDetails.setNotification(notificationJson.getData());
+        notificationDetails.setSourceSystem(notificationJson.getTowerCode());
+        notificationDetails.setProcessed("N");
+        notificationDetails.setCycleDate(new Date());
+        notificationDetails.setAuditCreateTs(new Date());
+        notificationDetails.setAuditUpdateTs(new Date());
+        notificationDetails.setComments("From Panda");
+        notificationDetails.setAuditCreateBy("SYSTEM");
+        notificationDetails.setAuditUpdateBy("SYSTEM");
+
+        try {
+            notificationRepository.save(notificationDetails);
+            log.info("messages are saved for eventId = " + notificationJson.getEventId());
+        } catch (Exception exception) {
+            log.info(exception.getMessage());
+        }
+    }
+}
+```
+
+### Summary
+
+1. **POJO for JSON Response**: Created a `NotificationJson` class to represent the JSON response.
+2. **Mapping in Service Class**: Modified the service class to map the `NotificationJson` to the `NotificationDetails` entity and save it to the database.
+
+This ensures that the JSON response from Kafka is correctly parsed and mapped to the database entity, and then saved into the database.
