@@ -1,30 +1,75 @@
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.annotation.KafkaListener;
+Sure, here's how you can create a Kafka configuration class and use the `@KafkaListener` annotation to consume messages from a Kafka topic. The configuration class will set up the necessary Kafka consumer properties, and the listener class will handle incoming messages.
+
+### Kafka Configuration Class
+
+First, create a configuration class for Kafka:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListener;
-import org.springframework.stereotype.Service;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 
-@Service
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class PandaNotificationListener implements MessageListener<String, String> {
+import java.util.HashMap;
+import java.util.Map;
 
-    PandaListenerService pandaListenerService;
+@EnableKafka
+@Configuration
+public class KafkaConsumerConfig {
 
-    @Value("${kafka.topic}")
-    String topicName;
+    @Bean
+    public ConsumerFactory<String, String> consumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "panda-topic-listener-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, String.class);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-    public PandaNotificationListener(PandaListenerService pandaListenerService) {
-        this.pandaListenerService = pandaListenerService;
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    /**
-     * This method consumes events from the Kafka topic.
-     * @throws BusinessException throws custom business exception
-     */
-    @KafkaListener(id = "panda-topic-listener-id", topics = "#{__listener.topicName}")
-    @Override
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setConcurrency(3);
+        factory.setErrorHandler(new SeekToCurrentErrorHandler());
+        return factory;
+    }
+}
+```
+
+### Kafka Listener Class
+
+Next, create the listener class which will handle the Kafka messages. This class will use the `@KafkaListener` annotation to consume messages from the specified Kafka topic:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PandaNotificationListener {
+
+    @Autowired
+    private PandaListenerService pandaListenerService;
+
+    @KafkaListener(id = "panda-topic-listener-id", topics = "${your.kafka.topic}")
     public void onMessage(final ConsumerRecord<String, String> consumerRecord) {
         try {
             String messages = consumerRecord.value();
@@ -35,3 +80,29 @@ public class PandaNotificationListener implements MessageListener<String, String
         }
     }
 }
+```
+
+### `application.yml`
+
+Ensure that your Kafka topic is specified in the `application.yml`:
+
+```yaml
+your:
+  kafka:
+    topic: "panda_data_change_alert"
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: panda-topic-listener-group
+      auto-offset-reset: earliest
+```
+
+### Summary
+
+1. The `KafkaConsumerConfig` class sets up the Kafka consumer properties.
+2. The `PandaNotificationListener` class listens to the Kafka topic and processes incoming messages.
+3. The `application.yml` file contains the necessary Kafka configuration, including the topic name and broker address.
+
+By following these steps, you will have a working Kafka consumer that listens to a specified topic and processes incoming messages.
