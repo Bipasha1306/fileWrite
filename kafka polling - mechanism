@@ -1,6 +1,3 @@
-Sure, I can modify the code to include the manual polling logic while keeping the existing implementation intact. Here’s how you can integrate the new polling mechanism with the existing `PandaNotificationListener` class:
-
-```java
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -15,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +37,7 @@ public class PandaNotificationListener implements MessageListener<String, String
     // Batch size and timeout interval
     private static final int BATCH_SIZE = 300;
     private static final long TIMEOUT_INTERVAL = 1800000; // 30 minutes in milliseconds
-    private long lastMessageTime = System.currentTimeMillis();
+    private long lastMessageTime;
 
     private KafkaConsumer<String, String> consumer;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -48,6 +46,7 @@ public class PandaNotificationListener implements MessageListener<String, String
                                      final PandaListenerService pandaListenerService) {
         this.customKafkaListenerRegistry = customKafkaListenerRegistry;
         this.pandaListenerService = pandaListenerService;
+        this.lastMessageTime = System.currentTimeMillis();
     }
 
     @Override
@@ -85,7 +84,7 @@ public class PandaNotificationListener implements MessageListener<String, String
     private void pollMessages() {
         try {
             while (true) {
-                ConsumerRecords<String, String> records = consumer.poll(100);
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
                 for (ConsumerRecord<String, String> record : records) {
                     String message = record.value();
                     log.info("Received message: " + message);
@@ -136,19 +135,3 @@ public class PandaNotificationListener implements MessageListener<String, String
         log.info("Processed batch of " + messagesToProcess.size() + " messages");
     }
 }
-```
-
-### Explanation:
-1. **Existing Implementation**:
-   - The existing `onMessage` method remains unchanged. It processes individual messages as they arrive.
-   
-2. **Polling Messages**:
-   - The `pollMessages` method runs in a separate thread and continuously polls the Kafka topic for new messages.
-   - Each received message is added to the `messageBuffer`.
-
-3. **Buffering and Flushing**:
-   - If the `messageBuffer` size reaches `BATCH_SIZE`, the `flushMessages` method is called to process and store the messages.
-   - The `scheduleTimeoutTask` method is scheduled to run every 30 minutes (`fixedRate = TIMEOUT_INTERVAL`).
-   - If the timeout interval has elapsed since the last message was received, the `flushMessages` method is called to process and store the messages.
-
-With these changes, the code will manually poll the Kafka topic, buffer the messages, and flush the messages to the database either when the buffer size reaches 300 messages or after a 30-minute timeout. The existing implementation for handling individual messages is also preserved.
