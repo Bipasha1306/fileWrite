@@ -1,7 +1,7 @@
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ public class PandaNotificationListener implements MessageListener<String, String
     // Batch size and timeout interval
     private static final int BATCH_SIZE = 300;
     private static final long TIMEOUT_INTERVAL = 1800000; // 30 minutes in milliseconds
-    private long lastMessageTime;
+    private volatile long lastMessageTime;
 
     private KafkaConsumer<String, String> consumer;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
