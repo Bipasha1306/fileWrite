@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.kafka.listener.MessageListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +22,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
-public class PandaNotificationListener implements MessageListener<String, String>, ApplicationRunner {
+public class PandaNotificationListener implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(PandaNotificationListener.class);
 
@@ -37,7 +36,7 @@ public class PandaNotificationListener implements MessageListener<String, String
     // Batch size and timeout interval
     private static final int BATCH_SIZE = 300;
     private static final long TIMEOUT_INTERVAL = 1800000; // 30 minutes in milliseconds
-    private volatile long lastMessageTime;
+    private long lastMessageTime;
 
     private KafkaConsumer<String, String> consumer;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -67,18 +66,6 @@ public class PandaNotificationListener implements MessageListener<String, String
 
         executorService.submit(this::pollMessages);
         scheduleTimeoutTask();
-    }
-
-    @Override
-    public void onMessage(final ConsumerRecord<String, String> data) {
-        String message = data.value();
-        log.info("Received message: " + message);
-        try {
-            log.info("Started storing panda details in table");
-            pandaListenerService.storeConsumeEventsInDb(message);
-        } catch (JsonProcessingException | ParseException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void pollMessages() {
@@ -128,7 +115,7 @@ public class PandaNotificationListener implements MessageListener<String, String
                 log.info("Started storing panda details in table");
                 pandaListenerService.storeConsumeEventsInDb(message);
             } catch (JsonProcessingException | ParseException e) {
-                throw new RuntimeException(e);
+                log.error("Error processing message", e);
             }
         }
 
