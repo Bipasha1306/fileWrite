@@ -1,1 +1,5 @@
-
+manually poll the Kafka topic.
+Messages are added to a messageBuffer.
+The pollMessages method runs in a separate thread, constantly polling for new messages.
+When the messageBuffer size reaches 300, or if the 30-minute timeout elapses, the flushMessages method is called to save the messages to the database.
+The scheduleTimeoutTask method schedules a task to check and flush messages every 30 minutes.
