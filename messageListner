@@ -1,0 +1,98 @@
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+@Service
+public class PandaNotificationListener implements MessageListener<String, String>, ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(PandaNotificationListener.class);
+
+    private final CustomKafkaListenerRegistry customKafkaListenerRegistry;
+    private final PandaListenerService pandaListenerService;
+
+    // List to hold messages and a lock for thread safety
+    private final List<String> messageBuffer = new ArrayList<>();
+    private final Lock bufferLock = new ReentrantLock();
+
+    // Batch size and timeout interval
+    private static final int BATCH_SIZE = 300;
+    private static final long TIMEOUT_INTERVAL = 1800000; // 30 minutes in milliseconds
+    private long lastMessageTime;
+
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    public PandaNotificationListener(final CustomKafkaListenerRegistry customKafkaListenerRegistry,
+                                     final PandaListenerService pandaListenerService) {
+        this.customKafkaListenerRegistry = customKafkaListenerRegistry;
+        this.pandaListenerService = pandaListenerService;
+        this.lastMessageTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public void run(final ApplicationArguments args) throws Exception {
+        log.info("Listener Started for Panda Notification Service");
+        String listenerId = "panda-topic-listener-id";
+        customKafkaListenerRegistry.registerListenerContainer(listenerId);
+        scheduleTimeoutTask();
+    }
+
+    @Override
+    public void onMessage(final ConsumerRecord<String, String> data) {
+        String message = data.value();
+        log.info("Received message: " + message);
+
+        bufferLock.lock();
+        try {
+            messageBuffer.add(message);
+            lastMessageTime = System.currentTimeMillis();
+
+            if (messageBuffer.size() >= BATCH_SIZE) {
+                flushMessages();
+            }
+        } finally {
+            bufferLock.unlock();
+        }
+    }
+
+    @Scheduled(fixedRate = TIMEOUT_INTERVAL) // Check every 30 minutes
+    public void scheduleTimeoutTask() {
+        bufferLock.lock();
+        try {
+            if (!messageBuffer.isEmpty() && (System.currentTimeMillis() - lastMessageTime >= TIMEOUT_INTERVAL)) {
+                flushMessages();
+            }
+        } finally {
+            bufferLock.unlock();
+        }
+    }
+
+    private void flushMessages() {
+        List<String> messagesToProcess = new ArrayList<>(messageBuffer);
+        messageBuffer.clear();
+
+        for (String message : messagesToProcess) {
+            try {
+                log.info("Started storing panda details in table");
+                pandaListenerService.storeConsumeEventsInDb(message);
+            } catch (JsonProcessingException | ParseException e) {
+                log.error("Error processing message", e);
+            }
+        }
+
+        log.info("Processed batch of " + messagesToProcess.size() + " messages");
+    }
+}
