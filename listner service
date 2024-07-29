@@ -1,0 +1,99 @@
+The error you're encountering, `com.fasterxml.jackson.databind.exc.MismatchedInputException: Cannot deserialize value of type `java.lang.String` from Object value (token `JsonToken.START_OBJECT`)`, indicates that Jackson is trying to map an object to a field of type `String`. This issue is caused by the `keys` field in your `PandaListnerResponse` class. 
+
+In the JSON, `keys` is an object:
+```json
+"keys": {"account_id":"3270542"}
+```
+
+In your `PandaListnerResponse` class, if you had `keys` defined as a `String`, Jackson wouldn't be able to deserialize it correctly. You need to update the `PandaListnerResponse` class to have `keys` as a `Map<String, String>`.
+
+Here’s how you can correct this:
+
+1. **Update the `PandaListnerResponse` class:**
+```java
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+
+import java.util.Map;
+
+@Data
+public class PandaListnerResponse {
+    @JsonProperty("towerCode")
+    private String towerCode;
+
+    @JsonProperty("attributes")
+    private List<String> attributes;
+
+    @JsonProperty("keys")
+    private Map<String, String> keys;
+
+    @JsonProperty("entityName")
+    private String entityName;
+
+    @JsonProperty("data")
+    private String data;
+
+    @JsonProperty("eventId")
+    private String eventId;
+
+    @JsonProperty("traceId")
+    private String traceId;
+
+    @JsonProperty("eventType")
+    private String eventType;
+
+    @JsonProperty("timestamp")
+    private long timestamp;
+}
+```
+
+2. **Ensure `storeConsumeEventsInDb` method handles the new structure:**
+```java
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+@Service
+public class PandaListenerService {
+
+    private final NotificationRepository notificationRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public PandaListenerService(final NotificationRepository notificationRepository) {
+        this.notificationRepository = notificationRepository;
+    }
+
+    public void storeConsumeEventsInDb(String messages) throws JsonProcessingException, ParseException {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSX");
+        PandaListnerResponse listnerResponse = objectMapper.readValue(messages, PandaListnerResponse.class);
+        NotificationDetails notificationDetails = new NotificationDetails();
+
+        Date jsonDate = new Date(listnerResponse.getTimestamp());
+        notificationDetails.setNotification(listnerResponse.getKeys().toString());
+        notificationDetails.setEventId(listnerResponse.getEventId());
+        notificationDetails.setEntityName(listnerResponse.getEntityName());
+        notificationDetails.setEventType(listnerResponse.getEventType());
+        notificationDetails.setSourceSystem(listnerResponse.getTowerCode());
+        notificationDetails.setProcessed("N");
+        notificationDetails.setCycleDate(jsonDate);
+        notificationDetails.setAuditCreateBy("SYSTEM");
+        notificationDetails.setComments("From Panda");
+        notificationDetails.setAuditCreateTs(new Date());
+        notificationDetails.setAuditCreateBy("SYSTEM");
+        notificationDetails.setAuditUpdateTs(new Date());
+
+        try {
+            notificationRepository.save(notificationDetails);
+            log.info("Panda notification messages inserted for eventId = " + listnerResponse.getEventId());
+        } catch (Exception e) {
+            log.error("Failed to insert notification details", e);
+        }
+    }
+}
+```
+
+With these changes, the `PandaListnerResponse` class should correctly map the JSON response, and the `storeConsumeEventsInDb` method should handle the data appropriately.
