@@ -33,9 +33,9 @@ public class PandaListenerServiceTest {
 
     @Test
     void testStoreConsumeEventsInDb() throws Exception {
-        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00Z\", \"keys\": {\"key1\": \"value1\"}, \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"key1\": \"value1\"}, \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
         PandaListenerResponse listenerResponse = new PandaListenerResponse();
-        listenerResponse.setTimestamp("2024-07-29T10:00:00Z");
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
         
         Map<String, String> keys = new HashMap<>();
         keys.put("key1", "value1");
