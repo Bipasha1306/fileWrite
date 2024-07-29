@@ -1,0 +1,241 @@
+To modify the `PandaListenerService` class to handle saving multiple records at once, you can change the method to accept a list of messages. You can then process each message in the list, collect the `NotificationDetails` objects, and save them all at once using the repository. Here’s how you can do that:
+
+### Modified `PandaListenerService` Class
+
+```java
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class PandaListenerService {
+
+    private static final Logger log = LoggerFactory.getLogger(PandaListenerService.class);
+
+    private final NotificationRepository notificationRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public PandaListenerService(final NotificationRepository notificationRepository) {
+        this.notificationRepository = notificationRepository;
+    }
+
+    public void storeConsumeEventsInDb(List<String> messages) throws JsonProcessingException, ParseException {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSX");
+        List<NotificationDetails> notificationDetailsList = new ArrayList<>();
+
+        for (String message : messages) {
+            PandaListenerResponse listenerResponse = objectMapper.readValue(message, PandaListenerResponse.class);
+
+            // Check if entityName is "AltCode" and alt_code_type_cd is "spn"
+            if ("AltCode".equals(listenerResponse.getEntityName())) {
+                String altCodeTypeCd = listenerResponse.getKeys().get("alt_code_type_cd");
+                if (!"spn".equals(altCodeTypeCd)) {
+                    log.info("Skipping message with entityName 'AltCode' and alt_code_type_cd: " + altCodeTypeCd);
+                    continue; // Skip processing this message
+                }
+            }
+
+            NotificationDetails notificationDetails = new NotificationDetails();
+            Date jsonDate = dateFormat.parse(String.valueOf(listenerResponse.getTimestamp()));
+            notificationDetails.setNotificationId(listenerResponse.getKeys().toString());
+            notificationDetails.setEventId(listenerResponse.getEventId());
+            notificationDetails.setEntityName(listenerResponse.getEntityName());
+            notificationDetails.setEventType(listenerResponse.getEventType());
+            notificationDetails.setTowerCode(listenerResponse.getTowerCode());
+            notificationDetails.setTimestamp(jsonDate);
+            notificationDetails.setProcessed("N");
+            notificationDetails.setCreateBy("SYSTEM");
+            notificationDetails.setUpdateBy("SYSTEM");
+            notificationDetails.setCreateDate(new Date());
+            notificationDetails.setUpdateDate(new Date());
+            notificationDetails.setComments("From Panda");
+
+            notificationDetailsList.add(notificationDetails);
+        }
+
+        try {
+            notificationRepository.saveAll(notificationDetailsList);
+            log.info("Panda notification messages inserted for " + notificationDetailsList.size() + " records.");
+        } catch (Exception e) {
+            log.error("Failed to insert notification details", e);
+        }
+    }
+}
+```
+
+### Explanation:
+- **Method Signature Change**: The method now accepts a `List<String>` instead of a single `String`.
+- **Loop Through Messages**: The method iterates over the list of messages, processes each one, and collects the resulting `NotificationDetails` objects into a list.
+- **Skip Unwanted Messages**: The method skips messages that do not meet the criteria for `entityName` and `alt_code_type_cd`.
+- **Save All at Once**: The method saves all `NotificationDetails` objects at once by calling `notificationRepository.saveAll(notificationDetailsList)`.
+
+### Updated Test Class
+
+You will also need to update the test class to reflect these changes.
+
+```java
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.text.ParseException;
+import java.util.*;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+public class PandaListenerServiceTest {
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @InjectMocks
+    private PandaListenerService pandaListenerService;
+
+    @BeforeEach
+    void setUp() {
+        // This method can be used to set up common test data or configurations
+    }
+
+    @Test
+    void testStoreConsumeEventsInDb() throws Exception {
+        String messageData1 = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"party_id\": \"12345\", \"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        String messageData2 = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"party_id\": \"12346\", \"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event124\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+
+        PandaListenerResponse listenerResponse1 = new PandaListenerResponse();
+        listenerResponse1.setTimestamp("2024-07-29T10:00:00.0000000Z");
+        Map<String, String> keys1 = new HashMap<>();
+        keys1.put("party_id", "12345");
+        keys1.put("alt_code_type_cd", "spn");
+        listenerResponse1.setKeys(keys1);
+        listenerResponse1.setEventId("event123");
+        listenerResponse1.setEntityName("entity");
+        listenerResponse1.setEventType("type");
+        listenerResponse1.setTowerCode("tower");
+
+        PandaListenerResponse listenerResponse2 = new PandaListenerResponse();
+        listenerResponse2.setTimestamp("2024-07-29T10:00:00.0000000Z");
+        Map<String, String> keys2 = new HashMap<>();
+        keys2.put("party_id", "12346");
+        keys2.put("alt_code_type_cd", "spn");
+        listenerResponse2.setKeys(keys2);
+        listenerResponse2.setEventId("event124");
+        listenerResponse2.setEntityName("entity");
+        listenerResponse2.setEventType("type");
+        listenerResponse2.setTowerCode("tower");
+
+        List<String> messages = Arrays.asList(messageData1, messageData2);
+
+        when(objectMapper.readValue(messageData1, PandaListenerResponse.class)).thenReturn(listenerResponse1);
+        when(objectMapper.readValue(messageData2, PandaListenerResponse.class)).thenReturn(listenerResponse2);
+
+        pandaListenerService.storeConsumeEventsInDb(messages);
+
+        verify(notificationRepository, times(1)).saveAll(anyList());
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbJsonProcessingException() throws Exception {
+        String messageData = "{\"invalid\": \"data\"}";
+        List<String> messages = Collections.singletonList(messageData);
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenThrow(JsonProcessingException.class);
+
+        assertThrows(JsonProcessingException.class, () -> {
+            pandaListenerService.storeConsumeEventsInDb(messages);
+        });
+
+        verify(notificationRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbParseException() throws Exception {
+        String messageData = "{\"timestamp\": \"invalid-date\", \"keys\": {\"party_id\": \"12345\", \"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        List<String> messages = Collections.singletonList(messageData);
+
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("invalid-date");
+        Map<String, String> keys = new HashMap<>();
+        keys.put("party_id", "12345");
+        keys.put("alt_code_type_cd", "spn");
+        listenerResponse.setKeys(keys);
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
+
+        assertThrows(ParseException.class, () -> {
+            pandaListenerService.storeConsumeEventsInDb(messages);
+        });
+
+        verify(notificationRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbWithAltCodeSpn() throws Exception {
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"party_id\": \"12345\", \"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        List<String> messages = Collections.singletonList(messageData);
+
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
+        Map<String, String> keys = new HashMap<>();
+        keys.put("party_id", "12345");
+        keys.put("alt_code_type_cd", "spn");
+        listenerResponse.setKeys(keys);
+        listenerResponse.setEventId("event123");
+        listenerResponse.setEntityName("AltCode");
+        listenerResponse.setEventType("type");
+        listenerResponse.setTowerCode("tower");
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse
+
+.class)).thenReturn(listenerResponse);
+
+        pandaListenerService.storeConsumeEventsInDb(messages);
+
+        verify(notificationRepository, times(1)).saveAll(anyList());
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbWithAltCodeNonSpn() throws Exception {
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"party_id\": \"12345\", \"alt_code_type_cd\": \"non_spn\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        List<String> messages = Collections.singletonList(messageData);
+
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
+        Map<String, String> keys = new HashMap<>();
+        keys.put("party_id", "12345");
+        keys.put("alt_code_type_cd", "non_spn");
+        listenerResponse.setKeys(keys);
+        listenerResponse.setEventId("event123");
+        listenerResponse.setEntityName("AltCode");
+        listenerResponse.setEventType("type");
+        listenerResponse.setTowerCode("tower");
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
+
+        pandaListenerService.storeConsumeEventsInDb(messages);
+
+        verify(notificationRepository, never()).saveAll(anyList());
+    }
+}
+```
+
+This updated test class reflects the changes made to the `PandaListenerService` class, including handling multiple messages and the new condition for `entityName` and `alt_code_type_cd`.
