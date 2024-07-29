@@ -1,0 +1,64 @@
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.boot.ApplicationArguments;
+
+@ExtendWith(MockitoExtension.class)
+public class PandaNotificationListenerTest {
+
+    @Mock
+    private CustomKafkaListenerRegistry customKafkaListenerRegistry;
+
+    @Mock
+    private PandaListenerService pandaListenerService;
+
+    @InjectMocks
+    private PandaNotificationListener pandaNotificationListener;
+
+    @BeforeEach
+    void setUp() {
+        // This method can be used to set up common test data or configurations
+    }
+
+    @Test
+    void testRun() throws Exception {
+        ApplicationArguments args = mock(ApplicationArguments.class);
+        pandaNotificationListener.run(args);
+        
+        verify(customKafkaListenerRegistry, times(1))
+            .registerListenerContainer("panda-topic-listener-id");
+    }
+
+    @Test
+    void testOnMessage() throws Exception {
+        String messageData = "{\"key\": \"value\"}"; // Replace with appropriate message data
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0, null, messageData);
+        
+        pandaNotificationListener.onMessage(consumerRecord);
+
+        verify(pandaListenerService, times(1))
+            .storeConsumeEventsInDb(messageData);
+    }
+
+    @Test
+    void testOnMessageException() {
+        String messageData = "{\"invalid\": \"data\"}";
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0, null, messageData);
+        
+        doThrow(new JsonProcessingException("JSON processing error") {})
+            .when(pandaListenerService).storeConsumeEventsInDb(messageData);
+
+        assertThrows(RuntimeException.class, () -> {
+            pandaNotificationListener.onMessage(consumerRecord);
+        });
+    }
+}
