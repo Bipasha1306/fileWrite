@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 public class PandaListenerServiceTest {
@@ -31,10 +33,14 @@ public class PandaListenerServiceTest {
 
     @Test
     void testStoreConsumeEventsInDb() throws Exception {
-        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00Z\", \"keys\": \"someKeys\", \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00Z\", \"keys\": {\"key1\": \"value1\"}, \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
         PandaListenerResponse listenerResponse = new PandaListenerResponse();
         listenerResponse.setTimestamp("2024-07-29T10:00:00Z");
-        listenerResponse.setKeys("someKeys");
+        
+        Map<String, String> keys = new HashMap<>();
+        keys.put("key1", "value1");
+        listenerResponse.setKeys(keys);
+        
         listenerResponse.setEventId("event123");
         listenerResponse.setEntityName("entity");
         listenerResponse.setEventType("type");
@@ -62,9 +68,13 @@ public class PandaListenerServiceTest {
 
     @Test
     void testStoreConsumeEventsInDbParseException() throws Exception {
-        String messageData = "{\"timestamp\": \"invalid-date\", \"keys\": \"someKeys\", \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        String messageData = "{\"timestamp\": \"invalid-date\", \"keys\": {\"key1\": \"value1\"}, \"eventId\": \"event123\", \"entityName\": \"entity\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
         PandaListenerResponse listenerResponse = new PandaListenerResponse();
         listenerResponse.setTimestamp("invalid-date");
+
+        Map<String, String> keys = new HashMap<>();
+        keys.put("key1", "value1");
+        listenerResponse.setKeys(keys);
 
         when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
 
