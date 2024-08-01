@@ -32,9 +32,12 @@ public class PandaNotificationListener implements MessageListener<String, String
      *
      * @param consumerRecord The record received from Kafka.
      * @param acknowledgment The acknowledgment object for manual acknowledgment.
+     * @param consumer       The consumer instance.
      */
     @Override
-    public void onMessage(final ConsumerRecord<String, String> consumerRecord, Acknowledgment acknowledgment) {
+    public void onMessage(final ConsumerRecord<String, String> consumerRecord, 
+                          final Acknowledgment acknowledgment, 
+                          final Consumer<?, ?> consumer) {
         try {
             log.info("Received message: " + consumerRecord.value());
             synchronized (consumerRecordBuffer) {
