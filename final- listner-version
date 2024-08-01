@@ -30,23 +30,24 @@ public class PandaNotificationListener implements MessageListener<String, String
     /**
      * Called when a message is received. Adds the message to the buffer.
      *
-     * @param consumerRecord The record received from Kafka.
+     * @param data          The record received from Kafka.
      * @param acknowledgment The acknowledgment object for manual acknowledgment.
-     * @param consumer       The consumer instance.
+     * @param consumer      The consumer instance.
      */
     @Override
-    public void onMessage(final ConsumerRecord<String, String> consumerRecord, 
+    public void onMessage(final ConsumerRecord<String, String> data, 
                           final Acknowledgment acknowledgment, 
                           final Consumer<?, ?> consumer) {
         try {
-            log.info("Received message: " + consumerRecord.value());
+            log.info("Received message: " + data.value());
             synchronized (consumerRecordBuffer) {
-                consumerRecordBuffer.add(consumerRecord);
+                consumerRecordBuffer.add(data);
                 acknowledgmentBuffer.add(acknowledgment);
             }
         } catch (Exception exception) {
             log.error("Listening panda data did throw an error!", exception);
         }
+        MessageListener.super.onMessage(data, acknowledgment, consumer);
     }
 
     /**
