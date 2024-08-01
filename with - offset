@@ -1,0 +1,138 @@
+import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class PandaNotificationListener implements MessageListener<String, String> {
+
+    CustomKafkaListenerRegistry customKafkaListenerRegistry;
+    PandaListenerService pandaListenerService;
+    List<ConsumerRecord<String, String>> consumerRecordBuffer;
+    List<Acknowledgment> acknowledgmentBuffer;
+
+    @Value("${kafka.listeners[3].listener-id}")
+    String listenerId;
+
+    /**
+     * Constructor for PandaNotificationListener.
+     *
+     * @param customKafkaListenerRegistry Custom Kafka Listener Registry.
+     * @param pandaListenerService        Service to handle panda listener operations.
+     * @param listenerId                  The listener ID.
+     */
+    public PandaNotificationListener(CustomKafkaListenerRegistry customKafkaListenerRegistry,
+                                     final PandaListenerService pandaListenerService, final String listenerId) {
+        this.customKafkaListenerRegistry = customKafkaListenerRegistry;
+        this.pandaListenerService = pandaListenerService;
+        this.listenerId = listenerId;
+        this.consumerRecordBuffer = new ArrayList<>();
+        this.acknowledgmentBuffer = new ArrayList<>();
+    }
+
+    /**
+     * Called when a message is received. Adds the message to the buffer.
+     *
+     * @param consumerRecord The record received from Kafka.
+     */
+    @Override
+    public void onMessage(final ConsumerRecord<String, String> consumerRecord) {
+        try {
+            log.info("Received message: " + consumerRecord.value());
+            synchronized (consumerRecordBuffer) {
+                consumerRecordBuffer.add(consumerRecord);
+            }
+        } catch (Exception exception) {
+            log.error("Listening panda data did throw an error!", exception);
+        }
+    }
+
+    /**
+     * Called to acknowledge the messages separately.
+     *
+     * @param acknowledgment The acknowledgment object for manual acknowledgment.
+     */
+    public void onAcknowledge(final Acknowledgment acknowledgment) {
+        synchronized (acknowledgmentBuffer) {
+            acknowledgmentBuffer.add(acknowledgment);
+        }
+    }
+
+    /**
+     * Registers the Kafka listener. Scheduled to run daily at 5 AM.
+     *
+     * @throws BusinessException if an error occurs during registration.
+     */
+    @Scheduled(cron = "0 00 05 * * ?") //Runs daily at 5 AM
+    public void consumeFromKafka() throws BusinessException {
+        log.info("The Kafka listener started");
+        registerKafkaListener();
+    }
+
+    /**
+     * Unregisters the Kafka listener and flushes messages to the database. Scheduled to run daily at 5:15 AM.
+     */
+    @Scheduled(cron = "0 15 05 * * ?") //Runs daily at 5:15 AM
+    public void stopListener() {
+        flushMessages();
+        customKafkaListenerRegistry.unregisterListenerContainer(listenerId);
+    }
+
+    /**
+     * Registers the Kafka listener container.
+     *
+     * @throws BusinessException if an error occurs during registration.
+     */
+    public void registerKafkaListener() throws BusinessException {
+        customKafkaListenerRegistry.registerListenerContainer(listenerId);
+    }
+
+    /**
+     * Flushes the buffered messages to the database and acknowledges the messages.
+     */
+    private void flushMessages() {
+        List<ConsumerRecord<String, String>> recordsToFlush;
+        List<Acknowledgment> acksToFlush;
+
+        synchronized (consumerRecordBuffer) {
+            recordsToFlush = new ArrayList<>(consumerRecordBuffer);
+            consumerRecordBuffer.clear();
+        }
+
+        synchronized (acknowledgmentBuffer) {
+            acksToFlush = new ArrayList<>(acknowledgmentBuffer);
+            acknowledgmentBuffer.clear();
+        }
+
+        try {
+            log.info("Flushing messages to the database");
+            List<String> messages = recordsToFlush.stream()
+                                                   .map(ConsumerRecord::value)
+                                                   .collect(Collectors.toList());
+            pandaListenerService.storeConsumeEventsInDb(messages);
+            log.info("Flushed messages to the database successfully");
+
+            // Acknowledge the messages after successful processing
+            for (int i = 0; i < acksToFlush.size(); i++) {
+                acksToFlush.get(i).acknowledge();
+                log.info("Acknowledged message with offset: " + recordsToFlush.get(i).offset());
+            }
+            log.info("All messages acknowledged successfully");
+        } catch (Exception e) {
+            log.error("Error while flushing messages to the database", e);
+        }
+    }
+}
