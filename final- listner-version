@@ -1,0 +1,97 @@
+@Slf4j
+@Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class PandaNotificationListener implements MessageListener<String, String> {
+
+    CustomKafkaListenerRegistry customKafkaListenerRegistry;
+    PandaListenerService pandaListenerService;
+    List<String> messageBuffer;
+
+    @Value("${kafka.listeners[3].listener-id}")
+    String listenerId;
+
+    /**
+     * Constructor for PandaNotificationListener.
+     *
+     * @param customKafkaListenerRegistry Custom Kafka Listener Registry.
+     * @param pandaListenerService        Service to handle panda listener operations.
+     * @param listenerId                  The listener ID.
+     */
+    public PandaNotificationListener(CustomKafkaListenerRegistry customKafkaListenerRegistry,
+                                     final PandaListenerService pandaListenerService, final String listenerId) {
+        this.customKafkaListenerRegistry = customKafkaListenerRegistry;
+        this.pandaListenerService = pandaListenerService;
+        this.listenerId = listenerId;
+        this.messageBuffer = new ArrayList<>();
+    }
+
+    /**
+     * Called when a message is received. Adds the message to the buffer.
+     *
+     * @param consumerRecord The record received from Kafka.
+     * @param acknowledgment The acknowledgment object for manual acknowledgment.
+     */
+    @Override
+    public void onMessage(final ConsumerRecord<String, String> consumerRecord, Acknowledgment acknowledgment) {
+        try {
+            String message = consumerRecord.value();
+            log.info("Received message: " + message);
+            synchronized (messageBuffer) {
+                messageBuffer.add(message);
+            }
+        } catch (Exception exception) {
+            log.error("Listening panda data did throw an error!", exception);
+        }
+    }
+
+    /**
+     * Registers the Kafka listener. Scheduled to run daily at 5 AM.
+     *
+     * @throws BusinessException if an error occurs during registration.
+     */
+    @Scheduled(cron = "0 00 05 * * ?") //Runs daily at 5 AM
+    public void consumeFromKafka() throws BusinessException {
+        log.info("The Kafka listener started");
+        registerKafkaListener();
+    }
+
+    /**
+     * Unregisters the Kafka listener and flushes messages to the database. Scheduled to run daily at 5:15 AM.
+     */
+    @Scheduled(cron = "0 15 05 * * ?") //Runs daily at 5:15 AM
+    public void stopListener() {
+        flushMessages();
+        customKafkaListenerRegistry.unregisterListenerContainer(listenerId);
+    }
+
+    /**
+     * Registers the Kafka listener container.
+     *
+     * @throws BusinessException if an error occurs during registration.
+     */
+    public void registerKafkaListener() throws BusinessException {
+        customKafkaListenerRegistry.registerListenerContainer(listenerId);
+    }
+
+    /**
+     * Flushes the buffered messages to the database and acknowledges the messages.
+     */
+    private void flushMessages() {
+        synchronized (messageBuffer) {
+            try {
+                log.info("Flushing messages to the database");
+                pandaListenerService.storeConsumeEventsInDb(messageBuffer);
+                messageBuffer.clear();
+                log.info("Flushed messages to the database successfully");
+                
+                // Acknowledge the messages after successful processing
+                for (ConsumerRecord<String, String> consumerRecord : consumerRecordList) {
+                    acknowledgment.acknowledge();
+                    log.info("Message acknowledged successfully with offset: " + consumerRecord.offset());
+                }
+            } catch (Exception e) {
+                log.error("Error while flushing messages to the database", e);
+            }
+        }
+    }
+}
