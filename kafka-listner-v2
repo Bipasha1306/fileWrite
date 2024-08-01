@@ -1,157 +1,129 @@
-Sure, here's how you can create a Kafka configuration class and use the `@KafkaListener` annotation to consume messages from a Kafka topic. The configuration class will set up the necessary Kafka consumer properties, and the listener class will handle incoming messages.
-
-### Kafka Configuration Class
-
-First, create a configuration class for Kafka:
-
-```java
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.config.ContainerProperties;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.MessageListener;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
-
-import java.util.HashMap;
-import java.util.Map;
-
-@EnableKafka
-@Configuration
-public class KafkaConsumerConfig {
-
-    @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "panda-topic-listener-group");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
-        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, String.class);
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        return new DefaultKafkaConsumerFactory<>(props);
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
-        factory.setConcurrency(3);
-        factory.setErrorHandler(new SeekToCurrentErrorHandler());
-        return factory;
-    }
-}
-```
-
-### Kafka Listener Class
-
-Next, create the listener class which will handle the Kafka messages. This class will use the `@KafkaListener` annotation to consume messages from the specified Kafka topic:
-
-```java
+import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
-public class PandaNotificationListener {
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class PandaNotificationListener implements MessageListener<String, String> {
 
-    @Autowired
-    private PandaListenerService pandaListenerService;
+    CustomKafkaListenerRegistry customKafkaListenerRegistry;
+    PandaListenerService pandaListenerService;
+    Queue<ConsumerRecord<String, String>> consumerRecordBuffer;
+    Queue<Acknowledgment> acknowledgmentBuffer;
 
-    @KafkaListener(id = "panda-topic-listener-id", topics = "${your.kafka.topic}")
+    @Value("${kafka.listeners[3].listener-id}")
+    String listenerId;
+
+    /**
+     * Constructor for PandaNotificationListener.
+     *
+     * @param customKafkaListenerRegistry Custom Kafka Listener Registry.
+     * @param pandaListenerService        Service to handle panda listener operations.
+     * @param listenerId                  The listener ID.
+     */
+    public PandaNotificationListener(CustomKafkaListenerRegistry customKafkaListenerRegistry,
+                                     final PandaListenerService pandaListenerService, final String listenerId) {
+        this.customKafkaListenerRegistry = customKafkaListenerRegistry;
+        this.pandaListenerService = pandaListenerService;
+        this.listenerId = listenerId;
+        this.consumerRecordBuffer = new ConcurrentLinkedQueue<>();
+        this.acknowledgmentBuffer = new ConcurrentLinkedQueue<>();
+    }
+
+    /**
+     * Called when a message is received. Adds the message to the buffer.
+     *
+     * @param consumerRecord The record received from Kafka.
+     */
+    @Override
     public void onMessage(final ConsumerRecord<String, String> consumerRecord) {
         try {
-            String messages = consumerRecord.value();
-            log.info("Value = " + messages);
-            pandaListenerService.storeConsumeEventsInDb(messages);
+            log.info("Received message: " + consumerRecord.value());
+            consumerRecordBuffer.add(consumerRecord);
         } catch (Exception exception) {
             log.error("Listening panda data did throw an error!", exception);
         }
     }
-}
-```
 
-### `application.yml`
-
-Ensure that your Kafka topic is specified in the `application.yml`:
-
-```yaml
-your:
-  kafka:
-    topic: "panda_data_change_alert"
-
-spring:
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: panda-topic-listener-group
-      auto-offset-reset: earliest
-```
-
-### Summary
-
-1. The `KafkaConsumerConfig` class sets up the Kafka consumer properties.
-2. The `PandaNotificationListener` class listens to the Kafka topic and processes incoming messages.
-3. The `application.yml` file contains the necessary Kafka configuration, including the topic name and broker address.
-
-By following these steps, you will have a working Kafka consumer that listens to a specified topic and processes incoming messages.
-
-
-//////////////////////////////
-
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.util.backoff.FixedBackOff;
-
-import java.util.HashMap;
-import java.util.Map;
-
-@EnableKafka
-@Configuration
-public class KafkaConfig {
-
-    @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "panda-topic-listener-id");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
-        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        return new DefaultKafkaConsumerFactory<>(props);
+    /**
+     * Called to acknowledge the messages separately.
+     *
+     * @param acknowledgment The acknowledgment object for manual acknowledgment.
+     */
+    public void onAcknowledge(final Acknowledgment acknowledgment) {
+        acknowledgmentBuffer.add(acknowledgment);
     }
 
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
-        factory.setMessageConverter(new StringJsonMessageConverter());
-        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 2)));
-        return factory;
+    /**
+     * Registers the Kafka listener. Scheduled to run daily at 5 AM.
+     *
+     * @throws BusinessException if an error occurs during registration.
+     */
+    @Scheduled(cron = "0 00 05 * * ?") //Runs daily at 5 AM
+    public void consumeFromKafka() throws BusinessException {
+        log.info("The Kafka listener started");
+        registerKafkaListener();
+    }
+
+    /**
+     * Unregisters the Kafka listener and flushes messages to the database. Scheduled to run daily at 5:15 AM.
+     */
+    @Scheduled(cron = "0 15 05 * * ?") //Runs daily at 5:15 AM
+    public void stopListener() {
+        flushMessages();
+        customKafkaListenerRegistry.unregisterListenerContainer(listenerId);
+    }
+
+    /**
+     * Registers the Kafka listener container.
+     *
+     * @throws BusinessException if an error occurs during registration.
+     */
+    public void registerKafkaListener() throws BusinessException {
+        customKafkaListenerRegistry.registerListenerContainer(listenerId);
+    }
+
+    /**
+     * Flushes the buffered messages to the database and acknowledges the messages.
+     */
+    private void flushMessages() {
+        List<ConsumerRecord<String, String>> recordsToFlush;
+        List<Acknowledgment> acksToFlush;
+
+        recordsToFlush = consumerRecordBuffer.stream().collect(Collectors.toList());
+        acksToFlush = acknowledgmentBuffer.stream().collect(Collectors.toList());
+
+        consumerRecordBuffer.clear();
+        acknowledgmentBuffer.clear();
+
+        log.info("Flushing messages to the database");
+        for (int i = 0; i < recordsToFlush.size(); i++) {
+            String message = recordsToFlush.get(i).value();
+            try {
+                pandaListenerService.storeConsumeEventsInDb(message);
+            } catch (JsonProcessingException | ParseException e) {
+                log.error("Error storing message: " + message, e);
+                continue;  // Skip acknowledgment if storing fails
+            }
+
+            Acknowledgment acknowledgment = acksToFlush.get(i);
+            acknowledgment.acknowledge();
+            log.info("Acknowledged message with offset: " + recordsToFlush.get(i).offset());
+        }
+        log.info("Flushed and acknowledged all messages successfully");
     }
 }
-
