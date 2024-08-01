@@ -1,7 +1,25 @@
+import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class PandaNotificationListener implements MessageListener<String, String> {
+public class PandaNotificationListener implements AcknowledgingMessageListener<String, String>, MessageListener<String, String> {
 
     CustomKafkaListenerRegistry customKafkaListenerRegistry;
     PandaListenerService pandaListenerService;
@@ -30,24 +48,33 @@ public class PandaNotificationListener implements MessageListener<String, String
     /**
      * Called when a message is received. Adds the message to the buffer.
      *
-     * @param data          The record received from Kafka.
+     * @param consumerRecord The record received from Kafka.
      * @param acknowledgment The acknowledgment object for manual acknowledgment.
-     * @param consumer      The consumer instance.
+     * @param consumer       The consumer instance.
      */
     @Override
-    public void onMessage(final ConsumerRecord<String, String> data, 
+    public void onMessage(final ConsumerRecord<String, String> consumerRecord, 
                           final Acknowledgment acknowledgment, 
                           final Consumer<?, ?> consumer) {
         try {
-            log.info("Received message: " + data.value());
+            log.info("Received message: " + consumerRecord.value());
             synchronized (consumerRecordBuffer) {
-                consumerRecordBuffer.add(data);
+                consumerRecordBuffer.add(consumerRecord);
                 acknowledgmentBuffer.add(acknowledgment);
             }
         } catch (Exception exception) {
             log.error("Listening panda data did throw an error!", exception);
         }
-        MessageListener.super.onMessage(data, acknowledgment, consumer);
+    }
+
+    /**
+     * Called when a message is received. Adds the message to the buffer.
+     *
+     * @param consumerRecord The record received from Kafka.
+     */
+    @Override
+    public void onMessage(final ConsumerRecord<String, String> consumerRecord) {
+        onMessage(consumerRecord, null, null);
     }
 
     /**
