@@ -5,7 +5,8 @@ public class PandaNotificationListener implements MessageListener<String, String
 
     CustomKafkaListenerRegistry customKafkaListenerRegistry;
     PandaListenerService pandaListenerService;
-    List<String> messageBuffer;
+    List<ConsumerRecord<String, String>> consumerRecordBuffer;
+    List<Acknowledgment> acknowledgmentBuffer;
 
     @Value("${kafka.listeners[3].listener-id}")
     String listenerId;
@@ -22,7 +23,8 @@ public class PandaNotificationListener implements MessageListener<String, String
         this.customKafkaListenerRegistry = customKafkaListenerRegistry;
         this.pandaListenerService = pandaListenerService;
         this.listenerId = listenerId;
-        this.messageBuffer = new ArrayList<>();
+        this.consumerRecordBuffer = new ArrayList<>();
+        this.acknowledgmentBuffer = new ArrayList<>();
     }
 
     /**
@@ -34,10 +36,10 @@ public class PandaNotificationListener implements MessageListener<String, String
     @Override
     public void onMessage(final ConsumerRecord<String, String> consumerRecord, Acknowledgment acknowledgment) {
         try {
-            String message = consumerRecord.value();
-            log.info("Received message: " + message);
-            synchronized (messageBuffer) {
-                messageBuffer.add(message);
+            log.info("Received message: " + consumerRecord.value());
+            synchronized (consumerRecordBuffer) {
+                consumerRecordBuffer.add(consumerRecord);
+                acknowledgmentBuffer.add(acknowledgment);
             }
         } catch (Exception exception) {
             log.error("Listening panda data did throw an error!", exception);
@@ -77,21 +79,31 @@ public class PandaNotificationListener implements MessageListener<String, String
      * Flushes the buffered messages to the database and acknowledges the messages.
      */
     private void flushMessages() {
-        synchronized (messageBuffer) {
-            try {
-                log.info("Flushing messages to the database");
-                pandaListenerService.storeConsumeEventsInDb(messageBuffer);
-                messageBuffer.clear();
-                log.info("Flushed messages to the database successfully");
-                
-                // Acknowledge the messages after successful processing
-                for (ConsumerRecord<String, String> consumerRecord : consumerRecordList) {
-                    acknowledgment.acknowledge();
-                    log.info("Message acknowledged successfully with offset: " + consumerRecord.offset());
-                }
-            } catch (Exception e) {
-                log.error("Error while flushing messages to the database", e);
+        List<ConsumerRecord<String, String>> recordsToFlush;
+        List<Acknowledgment> acksToFlush;
+
+        synchronized (consumerRecordBuffer) {
+            recordsToFlush = new ArrayList<>(consumerRecordBuffer);
+            acksToFlush = new ArrayList<>(acknowledgmentBuffer);
+            consumerRecordBuffer.clear();
+            acknowledgmentBuffer.clear();
+        }
+
+        try {
+            log.info("Flushing messages to the database");
+            List<String> messages = recordsToFlush.stream()
+                                                   .map(ConsumerRecord::value)
+                                                   .collect(Collectors.toList());
+            pandaListenerService.storeConsumeEventsInDb(messages);
+            log.info("Flushed messages to the database successfully");
+
+            // Acknowledge the messages after successful processing
+            for (Acknowledgment acknowledgment : acksToFlush) {
+                acknowledgment.acknowledge();
             }
+            log.info("All messages acknowledged successfully");
+        } catch (Exception e) {
+            log.error("Error while flushing messages to the database", e);
         }
     }
 }
