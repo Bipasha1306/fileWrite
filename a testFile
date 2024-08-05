@@ -1,0 +1,90 @@
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.kafka.support.Acknowledgment;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentMap;
+
+import static org.mockito.Mockito.*;
+
+@ExtendWith(SpringExtension.class)
+public class PandaNotificationListenerTest {
+
+    @InjectMocks
+    private PandaNotificationListener pandaNotificationListener;
+
+    @Mock
+    private CustomKafkaListenerRegistry customKafkaListenerRegistry;
+
+    @Mock
+    private PandaListenerService pandaListenerService;
+
+    @Mock
+    private Acknowledgment acknowledgment;
+
+    private ConsumerRecord<String, String> consumerRecord;
+
+    @BeforeEach
+    public void setUp() {
+        consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "value");
+    }
+
+    @Test
+    public void testConsumeFromKafka() throws BusinessException {
+        doNothing().when(customKafkaListenerRegistry).registerListenerContainer(anyString());
+
+        pandaNotificationListener.consumeFromKafka();
+
+        verify(customKafkaListenerRegistry, times(1)).registerListenerContainer("panda-topic-listener-id");
+    }
+
+    @Test
+    public void testOnMessage() {
+        pandaNotificationListener.onMessage(consumerRecord);
+
+        verify(pandaListenerService, never()).storeConsumeEventsInDb(anyList());
+    }
+
+    @Test
+    public void testHandleAcknowledgment() {
+        pandaNotificationListener.handleAcknowledgment(acknowledgment, consumerRecord.offset());
+
+        verify(acknowledgment, never()).acknowledge();
+    }
+
+    @Test
+    public void testHandleAcknowledgmentNull() {
+        pandaNotificationListener.handleAcknowledgment(null, consumerRecord.offset());
+
+        verify(acknowledgment, never()).acknowledge();
+    }
+
+    @Test
+    public void testRegisterKafkaListener() throws BusinessException {
+        pandaNotificationListener.registerKafkaListener();
+
+        verify(customKafkaListenerRegistry, times(1)).registerListenerContainer("panda-topic-listener-id");
+    }
+
+    @Test
+    public void testStopListener() throws BusinessException {
+        List<ConsumerRecord<String, String>> recordList = new ArrayList<>();
+        recordList.add(consumerRecord);
+        
+        ConcurrentMap<Long, Acknowledgment> ackMap = pandaNotificationListener.ackMap;
+        ackMap.put(consumerRecord.offset(), acknowledgment);
+
+        when(pandaListenerService.storeConsumeEventsInDb(anyList())).thenReturn(true);
+
+        pandaNotificationListener.stopListener();
+
+        verify(pandaListenerService, times(1)).storeConsumeEventsInDb(recordList);
+        verify(acknowledgment, times(1)).acknowledge();
+        verify(customKafkaListenerRegistry, times(1)).unregisterListenerContainer("panda-topic-listener-id");
+    }
+}
