@@ -9,6 +9,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.mockito.Mockito.*;
@@ -32,7 +33,10 @@ public class PandaNotificationListenerTest {
 
     @BeforeEach
     public void setUp() {
-        consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "value");
+        consumerRecord = new ConsumerRecord<>(
+                "panda_data_change_alert", 0, 5347483L, "36757381", 
+                "{\"towerCode\":\"panda\",\"attributes\":[\"accountId\"],\"keys\":{\"contact_type_cd\":\"ADRR\",\"end_dt\":null,\"account_id\":\"3131338\",\"employing_party_id\":\"1137\",\"person_id\":\"209115\"},\"entityName\":\"AccountContact\",\"data\":null,\"eventId\":\"36757381\",\"traceId\":\"36757381:2024-07-29 21:20:06\",\"eventType\":\"UPDATE\",\"timestamp\":\"2024-07-29T21:20:06.432164Z\"}"
+        );
     }
 
     @Test
@@ -47,6 +51,17 @@ public class PandaNotificationListenerTest {
     @Test
     public void testOnMessage() {
         pandaNotificationListener.onMessage(consumerRecord);
+
+        // Verify if the record is added to the recordList
+        // Use reflection to access the private recordList field
+        try {
+            Field recordListField = PandaNotificationListener.class.getDeclaredField("recordList");
+            recordListField.setAccessible(true);
+            List<ConsumerRecord<String, String>> recordList = (List<ConsumerRecord<String, String>>) recordListField.get(pandaNotificationListener);
+            assert(recordList.contains(consumerRecord));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         verify(pandaListenerService, never()).storeConsumeEventsInDb(anyList());
     }
@@ -81,6 +96,10 @@ public class PandaNotificationListenerTest {
         Field ackMapField = PandaNotificationListener.class.getDeclaredField("ackMap");
         ackMapField.setAccessible(true);
         ConcurrentMap<Long, Acknowledgment> ackMap = (ConcurrentMap<Long, Acknowledgment>) ackMapField.get(pandaNotificationListener);
+        if (ackMap == null) {
+            ackMap = new ConcurrentHashMap<>();
+            ackMapField.set(pandaNotificationListener, ackMap);
+        }
         ackMap.put(consumerRecord.offset(), acknowledgment);
 
         doNothing().when(pandaListenerService).storeConsumeEventsInDb(anyList());
