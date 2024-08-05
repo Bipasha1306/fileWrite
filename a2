@@ -1,0 +1,91 @@
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+@Slf4j
+@Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class PandaNotificationListener implements AcknowledgingMessageListener<String, String> {
+
+    CustomKafkaListenerRegistry customKafkaListenerRegistry;
+    PandaListenerService pandaListenerService;
+
+    @Value("${kafka.listeners[3].listener-id}")
+    String listenerId;
+
+    List<ConsumerRecord<String, String>> recordList = new ArrayList<>();
+    ConcurrentMap<Long, Acknowledgment> ackMap = new ConcurrentHashMap<>();
+
+    public PandaNotificationListener(CustomKafkaListenerRegistry customKafkaListenerRegistry,
+                                     final PandaListenerService pandaListenerService, final String listenerId) {
+        this.customKafkaListenerRegistry = customKafkaListenerRegistry;
+        this.pandaListenerService = pandaListenerService;
+        this.listenerId = listenerId;
+    }
+
+    /**
+     * This method makes sure to consume events from the topic daily at 5 AM
+     * @throws BusinessException throws custom business exception
+     */
+    @Scheduled(cron = "0 00 05 * * ?") // Runs daily at 5 AM
+    public void consumeFromKafka() throws BusinessException {
+        log.info("The Kafka listener started");
+        registerKafkaListener();
+    }
+
+    @Override
+    public void onMessage(final ConsumerRecord<String, String> consumerRecord, Acknowledgment acknowledgment) {
+        try {
+            log.info("Received record with value: " + consumerRecord.value() + " and offset: " + consumerRecord.offset());
+            synchronized (recordList) {
+                recordList.add(consumerRecord);
+                ackMap.put(consumerRecord.offset(), acknowledgment);
+            }
+        } catch (Exception exception) {
+            log.error("Listening to panda data threw an error!", exception);
+        }
+    }
+
+    public void registerKafkaListener() throws BusinessException {
+        customKafkaListenerRegistry.registerListenerContainer(listenerId);
+    }
+
+    @Scheduled(cron = "0 15 05 * * ?") // Runs daily at 5:15 AM
+    public void stopListener() {
+        try {
+            List<ConsumerRecord<String, String>> recordsToStore;
+            synchronized (recordList) {
+                recordsToStore = new ArrayList<>(recordList);
+                recordList.clear();
+            }
+            if (!recordsToStore.isEmpty()) {
+                pandaListenerService.storeConsumeEventsInDb(recordsToStore);
+                // Acknowledge the records after processing
+                for (ConsumerRecord<String, String> record : recordsToStore) {
+                    Acknowledgment ack = ackMap.remove(record.offset());
+                    if (ack != null) {
+                        log.info("Acknowledging Panda record with record offset: " + record.offset());
+                        ack.acknowledge();
+                    } else {
+                        log.warn("Acknowledgment for record with record offset: " + record.offset() + " is null.");
+                    }
+                }
+            }
+        } catch (Exception exception) {
+            log.error("Stopping panda listener threw an error!", exception);
+        } finally {
+            customKafkaListenerRegistry.unregisterListenerContainer(listenerId);
+        }
+    }
+}
