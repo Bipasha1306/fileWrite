@@ -6,6 +6,7 @@ import org.mockito.*;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.kafka.support.Acknowledgment;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
@@ -72,14 +73,17 @@ public class PandaNotificationListenerTest {
     }
 
     @Test
-    public void testStopListener() throws BusinessException {
+    public void testStopListener() throws Exception {
         List<ConsumerRecord<String, String>> recordList = new ArrayList<>();
         recordList.add(consumerRecord);
-        
-        ConcurrentMap<Long, Acknowledgment> ackMap = pandaNotificationListener.ackMap;
+
+        // Using reflection to access the private ackMap field
+        Field ackMapField = PandaNotificationListener.class.getDeclaredField("ackMap");
+        ackMapField.setAccessible(true);
+        ConcurrentMap<Long, Acknowledgment> ackMap = (ConcurrentMap<Long, Acknowledgment>) ackMapField.get(pandaNotificationListener);
         ackMap.put(consumerRecord.offset(), acknowledgment);
 
-        when(pandaListenerService.storeConsumeEventsInDb(anyList())).thenReturn(true);
+        doNothing().when(pandaListenerService).storeConsumeEventsInDb(anyList());
 
         pandaNotificationListener.stopListener();
 
