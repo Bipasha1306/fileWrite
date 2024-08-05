@@ -77,7 +77,7 @@ public class PandaListenersServiceTest {
 
     @Test
     void testStoreConsumeEventsInDbWithAltCodeSpn() throws Exception {
-        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"alt_code_type_cd\": \"spn\"}, \"eventId\": \"123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
         PandaListenerResponse listenerResponse = new PandaListenerResponse();
         listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
 
@@ -85,7 +85,7 @@ public class PandaListenersServiceTest {
         keys.put("alt_code_type_cd", "spn");
         listenerResponse.setKeys(keys);
 
-        listenerResponse.setEventId("event123");
+        listenerResponse.setEventId("123");
         listenerResponse.setEntityName("AltCode");
         listenerResponse.setEventType("type");
         listenerResponse.setTowerCode("tower");
@@ -104,7 +104,7 @@ public class PandaListenersServiceTest {
 
         NotificationDetails capturedNotificationDetails = capturedNotificationDetailsList.get(0);
         assert capturedNotificationDetails.getNotificationId().equals("{alt_code_type_cd=spn}");
-        assert capturedNotificationDetails.getEventId().equals(123L);
+        assert capturedNotificationDetails.getEventId() == 123L;  // ensure this is parsed correctly
         assert capturedNotificationDetails.getEntityName().equals("AltCode");
         assert capturedNotificationDetails.getEventType().equals("type");
         assert capturedNotificationDetails.getSourceSystem().equals("tower");
