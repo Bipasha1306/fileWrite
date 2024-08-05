@@ -32,3 +32,70 @@ public class PandaListenerController {
         }
     }
 }
+///////////////////////////////////////////////////////////////////////////
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+
+public class PandaListenerControllerTest {
+
+    @Mock
+    private PandaNotificationListener pandaNotificationListener;
+
+    @InjectMocks
+    private PandaListenerController pandaListenerController;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    public void testStartListenerSuccess() {
+        ResponseEntity<String> response = pandaListenerController.startListener();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Kafka listener started successfully.", response.getBody());
+        verify(pandaNotificationListener).registerKafkaListener();
+    }
+
+    @Test
+    public void testStartListenerFailure() {
+        doThrow(new RuntimeException("Kafka start error")).when(pandaNotificationListener).registerKafkaListener();
+
+        ResponseEntity<String> response = pandaListenerController.startListener();
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to start Kafka listener: Kafka start error", response.getBody());
+        verify(pandaNotificationListener).registerKafkaListener();
+    }
+
+    @Test
+    public void testStopListenerSuccess() {
+        ResponseEntity<String> response = pandaListenerController.stopListener();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Kafka listener stopped successfully.", response.getBody());
+        verify(pandaNotificationListener).stopListener();
+    }
+
+    @Test
+    public void testStopListenerFailure() {
+        doThrow(new RuntimeException("Kafka stop error")).when(pandaNotificationListener).stopListener();
+
+        ResponseEntity<String> response = pandaListenerController.stopListener();
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Failed to stop Kafka listener: Kafka stop error", response.getBody());
+        verify(pandaNotificationListener).stopListener();
+    }
+}
