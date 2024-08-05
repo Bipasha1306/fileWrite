@@ -138,3 +138,98 @@ public class PandaListenersServiceTest {
         verify(notificationRepository, never()).saveAll(anyList());
     }
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
+
+class PandaListenersServiceTest {
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @InjectMocks
+    private PandaListenersService pandaListenerService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbWithAltCodeSpn() throws Exception {
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
+
+        Map<String, String> keys = new HashMap<>();
+        keys.put("alt_code_type_cd", "spn");
+        listenerResponse.setKeys(keys);
+
+        listenerResponse.setEventId("event123");
+        listenerResponse.setEntityName("AltCode");
+        listenerResponse.setEventType("type");
+        listenerResponse.setTowerCode("tower");
+
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("panda_data_change_alert", 0, 5347483, null, messageData);
+        List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+        consumerRecords.add(consumerRecord);
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
+
+        pandaListenerService.storeConsumeEventsInDb(consumerRecords);
+
+        ArgumentCaptor<List<NotificationDetails>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository, times(1)).saveAll(captor.capture());
+
+        List<NotificationDetails> capturedNotificationDetails = captor.getValue();
+        assertEquals(1, capturedNotificationDetails.size());
+        assertEquals(5347483, Long.parseLong(capturedNotificationDetails.get(0).getRowId()));
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbWithAltCodeNonSpn() throws Exception {
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"alt_code_type_cd\": \"other\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
+
+        Map<String, String> keys = new HashMap<>();
+        keys.put("alt_code_type_cd", "other");
+        listenerResponse.setKeys(keys);
+
+        listenerResponse.setEventId("event123");
+        listenerResponse.setEntityName("AltCode");
+        listenerResponse.setEventType("type");
+        listenerResponse.setTowerCode("tower");
+
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("panda_data_change_alert", 0, 5347483, null, messageData);
+        List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+        consumerRecords.add(consumerRecord);
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
+
+        pandaListenerService.storeConsumeEventsInDb(consumerRecords);
+
+        verify(notificationRepository, never()).saveAll(anyList());
+    }
+}
