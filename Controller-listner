@@ -1,0 +1,34 @@
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class PandaListenerController {
+
+    private final PandaNotificationListener pandaNotificationListener;
+
+    public PandaListenerController(PandaNotificationListener pandaNotificationListener) {
+        this.pandaNotificationListener = pandaNotificationListener;
+    }
+
+    @GetMapping(value = "/listener")
+    public ResponseEntity<String> startListener() {
+        try {
+            pandaNotificationListener.registerKafkaListener();
+            return ResponseEntity.ok("Kafka listener started successfully.");
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to start Kafka listener: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping(value = "/stopListener")
+    public ResponseEntity<String> stopListener() {
+        try {
+            pandaNotificationListener.stopListener();
+            return ResponseEntity.ok("Kafka listener stopped successfully.");
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to stop Kafka listener: " + ex.getMessage());
+        }
+    }
+}
