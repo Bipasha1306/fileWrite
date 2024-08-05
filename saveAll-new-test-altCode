@@ -1,0 +1,140 @@
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import static org.mockito.Mockito.*;
+
+@ExtendWith(SpringExtension.class)
+public class PandaListenersServiceTest {
+
+    @InjectMocks
+    private PandaListenersService pandaListenersService;
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    private ConsumerRecord<String, String> consumerRecord;
+
+    @BeforeEach
+    public void setUp() {
+        consumerRecord = new ConsumerRecord<>(
+                "panda_data_change_alert", 0, 5347483L, "36757381",
+                "{\"towerCode\":\"panda\",\"attributes\":[\"accountId\"],\"keys\":{\"contact_type_cd\":\"ADRR\",\"end_dt\":null,\"account_id\":\"3131338\",\"employing_party_id\":\"1137\",\"person_id\":\"209115\"},\"entityName\":\"AccountContact\",\"data\":null,\"eventId\":\"36757381\",\"traceId\":\"36757381:2024-07-29 21:20:06\",\"eventType\":\"UPDATE\",\"timestamp\":\"2024-07-29T21:20:06.432164Z\"}"
+        );
+    }
+
+    @Test
+    public void testStoreConsumeEventsInDb() throws JsonProcessingException, ParseException {
+        List<ConsumerRecord<String, String>> consumerRecords = Collections.singletonList(consumerRecord);
+        
+        doNothing().when(notificationRepository).saveAll(anyList());
+
+        pandaListenersService.storeConsumeEventsInDb(consumerRecords);
+
+        ArgumentCaptor<List<NotificationDetails>> argumentCaptor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository, times(1)).saveAll(argumentCaptor.capture());
+
+        List<NotificationDetails> capturedNotificationDetailsList = argumentCaptor.getValue();
+        assert capturedNotificationDetailsList.size() == 1;
+
+        NotificationDetails capturedNotificationDetails = capturedNotificationDetailsList.get(0);
+        assert capturedNotificationDetails.getNotificationId().equals("{contact_type_cd=ADRR, end_dt=null, account_id=3131338, employing_party_id=1137, person_id=209115}");
+        assert capturedNotificationDetails.getEventId() == 36757381L;
+        assert capturedNotificationDetails.getEntityName().equals("AccountContact");
+        assert capturedNotificationDetails.getEventType().equals("UPDATE");
+        assert capturedNotificationDetails.getSourceSystem().equals("panda");
+        assert capturedNotificationDetails.getRowId().equals("5347483");
+        assert capturedNotificationDetails.getProcessStep().equals("Y");
+        assert capturedNotificationDetails.getAuditCd().equals("SYSTEM");
+        assert capturedNotificationDetails.getComments().equals("From Panda with offset: 5347483");
+    }
+
+    @Test
+    public void testStoreConsumeEventsInDb_skipAltCodeWithDifferentType() throws JsonProcessingException, ParseException {
+        ConsumerRecord<String, String> altCodeRecord = new ConsumerRecord<>(
+                "panda_data_change_alert", 0, 5347484L, "36757382",
+                "{\"towerCode\":\"panda\",\"attributes\":[\"accountId\"],\"keys\":{\"alt_code_type_cd\":\"abc\",\"contact_type_cd\":\"ADRR\",\"end_dt\":null,\"account_id\":\"3131338\",\"employing_party_id\":\"1137\",\"person_id\":\"209115\"},\"entityName\":\"AltCode\",\"data\":null,\"eventId\":\"36757382\",\"traceId\":\"36757382:2024-07-29 21:20:06\",\"eventType\":\"UPDATE\",\"timestamp\":\"2024-07-29T21:20:06.432164Z\"}"
+        );
+
+        List<ConsumerRecord<String, String>> consumerRecords = Collections.singletonList(altCodeRecord);
+
+        pandaListenersService.storeConsumeEventsInDb(consumerRecords);
+
+        verify(notificationRepository, times(0)).saveAll(anyList());
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbWithAltCodeSpn() throws Exception {
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"alt_code_type_cd\": \"spn\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
+
+        Map<String, String> keys = new HashMap<>();
+        keys.put("alt_code_type_cd", "spn");
+        listenerResponse.setKeys(keys);
+
+        listenerResponse.setEventId("event123");
+        listenerResponse.setEntityName("AltCode");
+        listenerResponse.setEventType("type");
+        listenerResponse.setTowerCode("tower");
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0, "key", messageData);
+        List<ConsumerRecord<String, String>> consumerRecords = Collections.singletonList(record);
+        pandaListenersService.storeConsumeEventsInDb(consumerRecords);
+
+        ArgumentCaptor<List<NotificationDetails>> argumentCaptor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository, times(1)).saveAll(argumentCaptor.capture());
+
+        List<NotificationDetails> capturedNotificationDetailsList = argumentCaptor.getValue();
+        assert capturedNotificationDetailsList.size() == 1;
+
+        NotificationDetails capturedNotificationDetails = capturedNotificationDetailsList.get(0);
+        assert capturedNotificationDetails.getNotificationId().equals("{alt_code_type_cd=spn}");
+        assert capturedNotificationDetails.getEventId().equals(123L);
+        assert capturedNotificationDetails.getEntityName().equals("AltCode");
+        assert capturedNotificationDetails.getEventType().equals("type");
+        assert capturedNotificationDetails.getSourceSystem().equals("tower");
+        assert capturedNotificationDetails.getRowId().equals("0");
+        assert capturedNotificationDetails.getProcessStep().equals("Y");
+        assert capturedNotificationDetails.getAuditCd().equals("SYSTEM");
+        assert capturedNotificationDetails.getComments().equals("From Panda with offset: 0");
+    }
+
+    @Test
+    void testStoreConsumeEventsInDbWithAltCodeNonSpn() throws Exception {
+        String messageData = "{\"timestamp\": \"2024-07-29T10:00:00.0000000Z\", \"keys\": {\"alt_code_type_cd\": \"other\"}, \"eventId\": \"event123\", \"entityName\": \"AltCode\", \"eventType\": \"type\", \"towerCode\": \"tower\"}";
+        PandaListenerResponse listenerResponse = new PandaListenerResponse();
+        listenerResponse.setTimestamp("2024-07-29T10:00:00.0000000Z");
+
+        Map<String, String> keys = new HashMap<>();
+        keys.put("alt_code_type_cd", "other");
+        listenerResponse.setKeys(keys);
+
+        listenerResponse.setEventId("event123");
+        listenerResponse.setEntityName("AltCode");
+        listenerResponse.setEventType("type");
+        listenerResponse.setTowerCode("tower");
+
+        when(objectMapper.readValue(messageData, PandaListenerResponse.class)).thenReturn(listenerResponse);
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0, "key", messageData);
+        List<ConsumerRecord<String, String>> consumerRecords = Collections.singletonList(record);
+        pandaListenersService.storeConsumeEventsInDb(consumerRecords);
+
+        verify(notificationRepository, never()).saveAll(anyList());
+    }
+}
