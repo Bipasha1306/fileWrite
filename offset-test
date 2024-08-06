@@ -1,0 +1,42 @@
+@Test
+public void testStopListener() throws Exception {
+    List<ConsumerRecord<String, String>> recordList = new ArrayList<>();
+    ConsumerRecord<String, String> consumerRecord1 = new ConsumerRecord<>("topic", 0, 0, "key1", "value1");
+    ConsumerRecord<String, String> consumerRecord2 = new ConsumerRecord<>("topic", 0, 1, "key2", "value2");
+    recordList.add(consumerRecord1);
+    recordList.add(consumerRecord2);
+
+    // Using reflection to access the private fields
+    Field recordListField = PandaNotificationListener.class.getDeclaredField("recordList");
+    recordListField.setAccessible(true);
+    recordListField.set(pandaNotificationListener, recordList);
+
+    Field ackMapField = PandaNotificationListener.class.getDeclaredField("ackMap");
+    ackMapField.setAccessible(true);
+    ConcurrentMap<Long, Acknowledgment> ackMap = (ConcurrentMap<Long, Acknowledgment>) ackMapField.get(pandaNotificationListener);
+    if (ackMap == null) {
+        ackMap = new ConcurrentHashMap<>();
+        ackMapField.set(pandaNotificationListener, ackMap);
+    }
+    ackMap.put(consumerRecord1.offset(), acknowledgment);
+    ackMap.put(consumerRecord2.offset(), acknowledgment);
+
+    // Mock the call to storeConsumeEventsInDb and return successful offsets
+    List<Long> successfulOffsets = Arrays.asList(consumerRecord1.offset());
+    when(pandaListenerService.storeConsumeEventsInDb(anyList())).thenReturn(successfulOffsets);
+
+    pandaNotificationListener.stopListener();
+
+    // Verify that storeConsumeEventsInDb was called with the correct argument
+    verify(pandaListenerService, times(1)).storeConsumeEventsInDb(argThat(new ArgumentMatcher<List<ConsumerRecord<String, String>>>() {
+        @Override
+        public boolean matches(List<ConsumerRecord<String, String>> argument) {
+            return argument != null && argument.size() == 2 && argument.containsAll(recordList);
+        }
+    }));
+
+    // Verify that only the successful record was acknowledged
+    verify(acknowledgment, times(1)).acknowledge();
+    assertNull(ackMap.get(consumerRecord1.offset())); // Should be null after acknowledgment
+    assertNotNull(ackMap.get(consumerRecord2.offset())); // Should still be present
+}
