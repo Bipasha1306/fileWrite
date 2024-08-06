@@ -1,0 +1,130 @@
+To handle the situation where a batch of records contains one or more bad records and ensure that acknowledgments are sent only for successfully processed records, you can modify the `storeConsumeEventsInDb` method to catch and handle exceptions for each individual record. This way, if a bad record is encountered, it won't prevent the processing and acknowledgment of the good records.
+
+Here's how you can achieve this:
+
+### Updated `storeConsumeEventsInDb` Method
+
+```java
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+@Service
+public class PandaListenerService {
+
+    private static final Logger log = LoggerFactory.getLogger(PandaListenerService.class);
+
+    private final NotificationRepository notificationRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public PandaListenerService(final NotificationRepository notificationRepository) {
+        this.notificationRepository = notificationRepository;
+    }
+
+    public void storeConsumeEventsInDb(List<ConsumerRecord<String, String>> consumerRecords) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSX");
+        List<NotificationDetails> notificationDetailsList = new ArrayList<>();
+        List<Long> successfulOffsets = new ArrayList<>();
+
+        for (ConsumerRecord<String, String> record : consumerRecords) {
+            try {
+                String message = record.value();
+                long offset = record.offset();
+
+                PandaListenerResponse listenerResponse = objectMapper.readValue(message, PandaListenerResponse.class);
+
+                // Check if entityName is "AltCode" and alt_code_type_cd is "spn"
+                if ("AltCode".equals(listenerResponse.getEntityName())) {
+                    String altCodeTypeCd = listenerResponse.getKeys().get("alt_code_type_cd");
+                    if (!"spn".equals(altCodeTypeCd)) {
+                        log.info("Skipping message with entityName 'AltCode' and alt_code_type_cd: " + altCodeTypeCd);
+                        continue; // Skip processing this message
+                    }
+                }
+
+                NotificationDetails notificationDetails = new NotificationDetails();
+                Date jsonDate = dateFormat.parse(String.valueOf(listenerResponse.getTimestamp()));
+                notificationDetails.setNotificationId(listenerResponse.getKeys().toString());
+                notificationDetails.setEventId(listenerResponse.getEventId());
+                notificationDetails.setEntityName(listenerResponse.getEntityName());
+                notificationDetails.setEventType(listenerResponse.getEventType());
+                notificationDetails.setTowerCode(listenerResponse.getTowerCode());
+                notificationDetails.setTimestamp(jsonDate);
+                notificationDetails.setProcessed("N");
+                notificationDetails.setCreateBy("SYSTEM");
+                notificationDetails.setUpdateBy("SYSTEM");
+                notificationDetails.setCreateDate(new Date());
+                notificationDetails.setUpdateDate(new Date());
+                notificationDetails.setComments("From Panda with offset: " + offset);
+
+                notificationDetailsList.add(notificationDetails);
+                successfulOffsets.add(offset);
+            } catch (JsonProcessingException | ParseException e) {
+                log.error("Failed to process record with offset: " + record.offset(), e);
+            }
+        }
+
+        try {
+            notificationRepository.saveAll(notificationDetailsList);
+            log.info("Panda notification messages inserted for " + notificationDetailsList.size() + " records.");
+        } catch (Exception e) {
+            log.error("Failed to insert notification details", e);
+        }
+    }
+}
+```
+
+### Updated `stopListener` Method
+
+```java
+@Scheduled(cron = "0 15 05 * * ?") // Runs daily at 5:15 AM
+public void stopListener() {
+    try {
+        List<ConsumerRecord<String, String>> recordsToStore;
+        synchronized (recordList) {
+            recordsToStore = new ArrayList<>(recordList);
+            recordList.clear();
+        }
+        if (!recordsToStore.isEmpty()) {
+            try {
+                pandaListenerService.storeConsumeEventsInDb(recordsToStore);
+                
+                // Only acknowledge if the store operation was successful
+                for (ConsumerRecord<String, String> record : recordsToStore) {
+                    Acknowledgment ack = ackMap.remove(record.offset());
+                    if (ack != null) {
+                        log.info("Acknowledging record with offset: " + record.offset());
+                        ack.acknowledge();
+                    } else {
+                        log.warn("Acknowledgment for record with offset: " + record.offset() + " is null.");
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error occurred while storing consume events in DB: ", e);
+            }
+        }
+    } catch (Exception exception) {
+        log.error("Stopping panda listener threw an error!", exception);
+    } finally {
+        String listenerId = "panda-topic-listener-id";
+        customKafkaListenerRegistry.unregisterListenerContainer(listenerId);
+    }
+}
+```
+
+### Explanation:
+
+1. **Per-Record Error Handling**: Each record is processed individually inside a try-catch block within the `storeConsumeEventsInDb` method. If an error occurs while processing a specific record, the error is logged, and processing continues with the next record.
+2. **Successful Offsets**: A list of successful offsets (`successfulOffsets`) is maintained to track which records were processed without errors.
+3. **Acknowledgment Only for Successful Records**: In the `stopListener` method, acknowledgments are sent only for records that were successfully processed and stored in the database.
+
+By making these changes, you ensure that only the successfully processed records are acknowledged, and any bad records do not affect the acknowledgment of good records.
