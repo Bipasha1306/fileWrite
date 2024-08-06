@@ -1,0 +1,103 @@
+To ensure that each record is only acknowledged if its storage operation was successful, you can modify the `storeConsumeEventsInDb` method to return a list of offsets of successfully stored records. Then, in the `stopListener` method, only acknowledge those specific records.
+
+### Updated `storeConsumeEventsInDb` Method
+
+```java
+public List<Long> storeConsumeEventsInDb(List<ConsumerRecord<String, String>> consumerRecords) {
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSX");
+    List<NotificationDetails> notificationDetailsList = new ArrayList<>();
+    List<Long> successfulOffsets = new ArrayList<>(); // Track successful offsets
+
+    for (ConsumerRecord<String, String> record : consumerRecords) {
+        try {
+            String message = record.value();
+            long offset = record.offset();
+
+            PandaListenerResponse listenerResponse = objectMapper.readValue(message, PandaListenerResponse.class);
+
+            // Check if entityName is "AltCode" and alt_code_type_cd is "spn"
+            if ("AltCode".equals(listenerResponse.getEntityName())) {
+                String altCodeTypeCd = listenerResponse.getKeys().get("alt_code_type_cd");
+                if (!"spn".equals(altCodeTypeCd)) {
+                    log.info("Skipping message with entityName 'AltCode' and alt_code_type_cd: " + altCodeTypeCd);
+                    continue; // Skip processing this message
+                }
+            }
+
+            NotificationDetails notificationDetails = new NotificationDetails();
+            Date jsonDate = dateFormat.parse(String.valueOf(listenerResponse.getTimestamp()));
+            notificationDetails.setNotificationId(listenerResponse.getKeys().toString());
+            notificationDetails.setEventId(listenerResponse.getEventId());
+            notificationDetails.setEntityName(listenerResponse.getEntityName());
+            notificationDetails.setEventType(listenerResponse.getEventType());
+            notificationDetails.setTowerCode(listenerResponse.getTowerCode());
+            notificationDetails.setTimestamp(jsonDate);
+            notificationDetails.setProcessed("N");
+            notificationDetails.setCreateBy("SYSTEM");
+            notificationDetails.setUpdateBy("SYSTEM");
+            notificationDetails.setCreateDate(new Date());
+            notificationDetails.setUpdateDate(new Date());
+            notificationDetails.setComments("From Panda with offset: " + offset);
+
+            notificationDetailsList.add(notificationDetails);
+            successfulOffsets.add(offset); // Track successful offset
+        } catch (JsonProcessingException | ParseException e) {
+            log.error("Failed to process record with offset: " + record.offset(), e);
+        }
+    }
+
+    try {
+        notificationRepository.saveAll(notificationDetailsList);
+        log.info("Panda notification messages inserted for " + notificationDetailsList.size() + " records.");
+    } catch (Exception e) {
+        log.error("Failed to insert notification details", e);
+    }
+
+    return successfulOffsets; // Return list of successful offsets
+}
+```
+
+### Updated `stopListener` Method
+
+```java
+@Scheduled(cron = "0 15 05 * * ?") // Runs daily at 5:15 AM
+public void stopListener() {
+    try {
+        List<ConsumerRecord<String, String>> recordsToStore;
+        synchronized (recordList) {
+            recordsToStore = new ArrayList<>(recordList);
+            recordList.clear();
+        }
+        if (!recordsToStore.isEmpty()) {
+            try {
+                List<Long> successfulOffsets = pandaListenerService.storeConsumeEventsInDb(recordsToStore);
+                
+                // Only acknowledge records with successful offsets
+                for (ConsumerRecord<String, String> record : recordsToStore) {
+                    if (successfulOffsets.contains(record.offset())) {
+                        Acknowledgment ack = ackMap.remove(record.offset());
+                        if (ack != null) {
+                            log.info("Acknowledging record with offset: " + record.offset());
+                            ack.acknowledge();
+                        } else {
+                            log.warn("Acknowledgment for record with offset: " + record.offset() + " is null.");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error occurred while storing consume events in DB: ", e);
+            }
+        }
+    } catch (Exception exception) {
+        log.error("Stopping panda listener threw an error!", exception);
+    } finally {
+        String listenerId = "panda-topic-listener-id";
+        customKafkaListenerRegistry.unregisterListenerContainer(listenerId);
+    }
+}
+```
+
+### Explanation:
+
+1. **Return Successful Offsets**: The `storeConsumeEventsInDb` method now returns a list of offsets of records that were successfully stored in the database.
+2. **Acknowledge Only Successful Records**: In the `stopListener` method, acknowledgments are sent only for records whose offsets are in the list of successful offsets. This ensures that bad records are not acknowledged, and only the successfully processed records are acknowledged.
