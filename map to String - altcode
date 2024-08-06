@@ -1,74 +1,15 @@
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.stereotype.Service;
+Here are the changes to make:
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+1. Import the necessary Jackson classes:
 
-@Service
-public class PandaListenersService {
-    private final NotificationRepository notificationRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+   ```java
+   import com.fasterxml.jackson.core.JsonProcessingException;
+   import com.fasterxml.jackson.databind.ObjectMapper;
+   ```
 
-    public PandaListenersService(final NotificationRepository notificationRepository) {
-        this.notificationRepository = notificationRepository;
-    }
+2. Convert `keys` map to a JSON string and set it to `notificationId`:
 
-    public void storeConsumeEventsInDb(List<ConsumerRecord<String, String>> consumerRecords) throws JsonProcessingException, ParseException {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSX");
-        List<NotificationDetails> notificationDetailsList = new ArrayList<>();
-
-        for (ConsumerRecord<String, String> record : consumerRecords) {
-            String message = record.value();
-            long offset = record.offset();
-
-            PandaListenerResponse listenerResponse = objectMapper.readValue(message, PandaListenerResponse.class);
-
-            // Deserialize keys from JSON string to a Map
-            Map<String, String> keysMap = objectMapper.readValue(listenerResponse.getKeys(), new TypeReference<Map<String, String>>(){});
-
-            // Check if entityName is "AltCode" and alt_code_type_cd is "spn"
-            if ("AltCode".equals(listenerResponse.getEntityName())) {
-                String altCodeTypeCd = keysMap.get("alt_code_type_cd");
-                if (!"spn".equals(altCodeTypeCd)) {
-                    log.info("Skipping message with entityName 'AltCode' and alt_code_type_cd: " + altCodeTypeCd);
-                    continue; // Skip processing this message
-                }
-            }
-
-            NotificationDetails notificationDetails = new NotificationDetails();
-            Date jsonDate = dateFormat.parse(String.valueOf(listenerResponse.getTimestamp()));
-            notificationDetails.setEventId(Long.parseLong(listenerResponse.getEventId()));
-            notificationDetails.setEntityName(listenerResponse.getEntityName());
-            notificationDetails.setEventType(listenerResponse.getEventType());
-            notificationDetails.setSourceSystem(listenerResponse.getTowerCode());
-            notificationDetails.setRowId(String.valueOf(offset));
-            notificationDetails.setProcessStep("Y");
-            notificationDetails.setCycleDate(jsonDate);
-            notificationDetails.setAuditCd("SYSTEM");
-            notificationDetails.setComments("From Panda");
-            notificationDetails.setAuditCreatedTs(new Date());
-            notificationDetails.setAuditCreatedBy("SYSTEM");
-            notificationDetails.setAuditUpdatedTs(new Date());
-
-            // Serialize keys to JSON string
-            String keysJson = listenerResponse.getKeys();
-            notificationDetails.setKeys(keysJson);
-            
-            notificationDetails.setComments("From Panda with offset: " + offset);
-            notificationDetailsList.add(notificationDetails);
-        }
-
-        try {
-            notificationRepository.saveAll(notificationDetailsList);
-            log.info("Panda notification messages inserted for " + notificationDetailsList.size() + " records.");
-        } catch (Exception e) {
-            log.error("Failed to insert notification details", e);
-        }
-    }
-}
+   ```java
+   String notificationId = objectMapper.writeValueAsString(listenerResponse.getKeys());
+   notificationDetails.setNotificationId(notificationId);
+   ```
