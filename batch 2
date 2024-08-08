@@ -187,3 +187,48 @@ public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessExcept
 3. **Overall Result**: Each batch's result is appended to `overallResult`, which is returned at the end.
 
 This setup ensures that headers are printed only once, and the subsequent data from each batch is properly appended to both the output file and the result string.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+The `prepareSubLists` method is used to divide a collection into smaller sublists, each containing a specified number of elements. This method wasn't explicitly provided in the original code, so I will define it based on its expected functionality.
+
+### Implementation of `prepareSubLists`
+
+This method will take a `Set<String>` (or any collection) and divide it into sublists of a specified size. If the size of the collection is large, the method will return multiple sublists, each with a maximum of 100 elements (or any specified size).
+
+Here’s how you can implement the `prepareSubLists` method:
+
+```java
+private List<List<String>> prepareSubLists(Set<String> allItems, int batchSize) {
+    List<List<String>> subLists = new ArrayList<>();
+    List<String> itemList = new ArrayList<>(allItems);
+
+    int totalSize = itemList.size();
+    for (int i = 0; i < totalSize; i += batchSize) {
+        // Create sublist from the current index to the next batch size or the end of the list
+        List<String> subList = itemList.subList(i, Math.min(totalSize, i + batchSize));
+        subLists.add(new ArrayList<>(subList));  // Create a new list for each sublist to avoid referencing issues
+    }
+
+    return subLists;
+}
+```
+
+### Explanation:
+- **Set<String> allItems**: The input set of strings that needs to be divided.
+- **int batchSize**: The size of each sublist. In your case, this would likely be 100.
+- **List<List<String>> subLists**: The output list containing multiple sublists, each with a maximum of `batchSize` elements.
+
+### Example Usage:
+If you have a `Set<String>` with 250 elements and you want to divide it into sublists of 100:
+
+```java
+Set<String> allItems = ...; // Your set of items
+List<List<String>> subLists = prepareSubLists(allItems, 100);
+
+// subLists will contain 3 lists: two with 100 elements and one with 50 elements
+```
+
+### Integration with the Incremental Load Process:
+
+You can integrate this `prepareSubLists` method directly into the `incrementalLoad` method as described earlier. It will allow you to process the GraphQL query in batches, passing only 100 elements at a time to the `getResponse` method and then to `storeDataInTXT`.
