@@ -1,0 +1,189 @@
+To ensure that the headers are only printed once while still keeping the original process intact, we can modify the `storeDataInTXT` method slightly without changing its core functionality. The idea is to introduce a flag that will indicate whether the headers have been written already. This flag will help control whether the headers are printed for each batch.
+
+### Step-by-Step Implementation
+
+1. **Add a boolean flag** to control the header writing.
+2. **Ensure that headers are only printed** in the first batch.
+3. **Append data** for subsequent batches without printing headers again.
+
+### Updated `storeDataInTXT` Method
+
+```java
+public String storeDataInTXT(String jsonResponse, List<String> keys, Map<String, String> eventTypeMap,
+                             LoadDto loadDto, String queryName, final String currentFilter, boolean appendHeaders) {
+
+    try (StringWriter stringWriter = new StringWriter()) {
+        // Parse JSON data
+        JSONObject jsonObject = new JSONObject(jsonResponse);
+        JSONArray jsonArray;
+        if (containEdges) {
+            jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+        } else {
+            jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
+        }
+        Map<String, Boolean> accountsFound = new HashMap<>();
+
+        // Add headers only if `appendHeaders` is true
+        if (appendHeaders) {
+            List<String> headers = new ArrayList<>(keys);
+            headers.add("eventType");
+
+            stringWriter.write(String.join("\t", headers));
+            stringWriter.write("\n");
+        }
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(queryName + ".csv", true)); // Append mode
+        if (appendHeaders) {
+            writer.write(String.join(",", keys));
+            writer.newLine();
+        }
+
+        // Iterate over the accounts in the JSON response
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject account = jsonArray.getJSONObject(i);
+            String accountId = null;
+            List<Integer> nestedArrSizes = new ArrayList<>();
+
+            // Get the size of all the nested JSONArray present inside this account
+            for (String key : keys) {
+                String[] nestedKeys = key.split("\\.");
+                String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                Object value = getValue(account, newKeys, null);
+                if (value instanceof JSONArray) {
+                    nestedArrSizes.add(((JSONArray) value).length());
+                }
+            }
+
+            // Maximum size of any nested JSONArray
+            int maxSize = nestedArrSizes.stream()
+                    .mapToInt(Integer::intValue)
+                    .max()
+                    .orElse(1);
+
+            for (int j = 0; j < maxSize; j++) {
+                int keysIndex = 0;
+                // Write data for the account
+                List<String> values = new ArrayList<>();
+
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                    Object value = getValue(account, newKeys, j);
+                    values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                    // Check if the current key is accountId
+                    if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(currentFilter)) {
+                        accountId = (value != null) ? value.toString() : null;
+                        accountsFound.put(accountId, true);
+                    }
+
+                    // if last iteration of for loop add "insert" or "delete"
+                    if (keysIndex == keys.size() - 1) {
+                        String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+                        values.add("\"" + eventType + "\"");
+                    }
+                    keysIndex++;
+                }
+
+                // Print values
+                System.out.println(String.join("\t", values));
+                stringWriter.write(String.join("\t", values));
+                stringWriter.write("\n");
+
+                writer.write(String.join(",", values));
+                writer.newLine();
+            }
+        }
+
+        addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
+        stringWriter.close();
+        writer.close();
+        String result = stringWriter.toString();
+        updateStatus(loadDto, "SUCCESS");
+        System.out.println("Data has been written to " + queryName + ".csv");
+
+        // Print the result
+        System.out.println("Result:\n" + result);
+
+        containEdges = false;
+        eventTypeMap.clear();
+        return result;
+
+    } catch (IOException e) {
+        updateStatus(loadDto, "FAILED");
+        return e.getMessage();
+    }
+}
+```
+
+### Updated `incrementalLoad` Method
+
+Here's how the `incrementalLoad` method will use the modified `storeDataInTXT` method:
+
+```java
+@Transactional
+public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessException {
+    LoadDto loadDto = insertLoad(queryName);
+
+    // STEP-1: Get query from spring cloud config
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+    if (radixQueryProperties.isEmpty()) {
+        throw new BusinessException("Query name is incorrect");
+    }
+    Map<String, String> entityAndFilterColumn = baseService.getEntitiesAndFilterColumnsByQuery(radixQueryProperties);
+
+    // STEP-2: Get filters from Notification table
+    Map<String, Object> filters = getFilters(entityAndFilterColumn);
+    String currentFilter = getCurrentFilter(entityAndFilterColumn);
+
+    // Get the eventType map from the notification table
+    Map<String, String> eventTypeMap = getEventTypeMap();
+
+    if (eventTypeMap.isEmpty()) {
+        updateStatus(loadDto, "SUCCESS");
+        return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(null).build();
+    }
+
+    // Prepare sublists for filters to ensure only 100 IDs are processed at a time
+    List<List<String>> subLists = prepareSubLists(new HashSet<>(filters.values()), 100);
+
+    StringBuilder overallResult = new StringBuilder();
+    boolean appendHeaders = true; // Ensure headers are only written once
+
+    for (List<String> subList : subLists) {
+        Map<String, Object> subListFilters = new HashMap<>(filters);
+        subListFilters.put(entityAndFilterColumn.values().iterator().next(), subList);
+
+        ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), subListFilters);
+
+        // Code to get the operation name from the GraphQL query
+        Pattern pattern = Pattern.compile("^(\\s*(query|mutation|subscription)\\s+(\\w+).*)", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(radixQueryProperties.get().getRadixQuery());
+        String operationName = "";
+        if (matcher.find()) {
+            operationName = matcher.group(3);
+        }
+
+        // Extract headers only for the first batch
+        List<String> headers = extractKeysFromQuery(radixQueryProperties.get().getRadixQuery(), operationName);
+
+        // Call `storeDataInTXT` for each batch and append the result
+        String batchResult = storeDataInTXT(response.getBody().toString(), headers, eventTypeMap, loadDto, operationName, currentFilter, appendHeaders);
+        overallResult.append(batchResult);
+
+        appendHeaders = false; // Ensure headers are not appended in subsequent batches
+    }
+
+    return PandaRunStatusDto.builder()
+            .runId(loadDto.getRunId())
+            .fileContent(overallResult.toString().getBytes())
+            .build();
+}
+```
+
+### Key Points:
+1. **Boolean Flag (`appendHeaders`)**: This flag controls whether headers should be appended. It is passed as `true` only for the first batch, ensuring headers are only printed once.
+2. **Append Mode in FileWriter**: The `FileWriter` is used in append mode to ensure that each batch of data is added to the existing file without overwriting.
+3. **Overall Result**: Each batch's result is appended to `overallResult`, which is returned at the end.
+
+This setup ensures that headers are printed only once, and the subsequent data from each batch is properly appended to both the output file and the result string.
