@@ -232,3 +232,14 @@ List<List<String>> subLists = prepareSubLists(allItems, 100);
 ### Integration with the Incremental Load Process:
 
 You can integrate this `prepareSubLists` method directly into the `incrementalLoad` method as described earlier. It will allow you to process the GraphQL query in batches, passing only 100 elements at a time to the `getResponse` method and then to `storeDataInTXT`.
+
+
+/////////////////////////
+// Assuming all values in the filters map are Strings
+Set<String> stringFilters = filters.values().stream()
+                                   .filter(value -> value instanceof String)
+                                   .map(value -> (String) value)
+                                   .collect(Collectors.toSet());
+
+List<List<String>> subLists = prepareSubLists(stringFilters, 100);
+
