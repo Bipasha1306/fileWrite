@@ -99,3 +99,54 @@ public class PandaListenerControllerTest {
         verify(pandaNotificationListener).stopListener();
     }
 }
+//////////////////////////////////////////////////
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.ResponseEntity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+
+public class FusionDataSourcingDataChangeAlertControllerTest {
+
+    @Mock
+    private PandaNotificationListener pandaNotificationListener;
+
+    @InjectMocks
+    private FusionDataSourcingDataChangeAlertController controller;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testActivateListener() throws BusinessException {
+        // Arrange
+        doNothing().when(pandaNotificationListener).registerKafkaListener();
+
+        // Act
+        ResponseEntity<CustomResponse<String>> response = controller.activateListener();
+
+        // Assert
+        assertThat(response.getBody().getData()).isEqualTo("Kafka listener started successfully.");
+        verify(pandaNotificationListener).registerKafkaListener();
+    }
+
+    @Test
+    void testDeactivateListener() throws BusinessException {
+        // Arrange
+        doNothing().when(pandaNotificationListener).stopListener();
+
+        // Act
+        ResponseEntity<CustomResponse<String>> response = controller.deactivateListener();
+
+        // Assert
+        assertThat(response.getBody().getData()).isEqualTo("Kafka listener stopped successfully");
+        verify(pandaNotificationListener).stopListener();
+    }
+}
