@@ -12,7 +12,8 @@ WHERE EmployeeID IN (
         SELECT EmployeeID,
                ROW_NUMBER() OVER (PARTITION BY Email ORDER BY EmployeeID) AS rn
         FROM Employees
-    ) AS RankedEmails
-    WHERE rn % 2 = 0
+    )
+    WHERE rn MOD 2 = 0
 );
+
 
