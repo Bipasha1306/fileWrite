@@ -1,0 +1,6 @@
+DELETE FROM Employees
+WHERE EmployeeID NOT IN (
+    SELECT MIN(EmployeeID)
+    FROM Employees
+    GROUP BY Email
+);
