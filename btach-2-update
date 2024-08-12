@@ -280,3 +280,129 @@ public class PandaAccountService {
 - **Handling Fewer Records:** If the number of records is fewer than the batch size, the `prepareSubLists` method ensures that all records are still processed correctly.
 
 This code should now meet your requirements, processing records in batches while maintaining the original processing logic.
+
+
+////////////////////////////
+public String storeDataInTXT(String jsonResponse, List<String> keys, Map<String, String> eventTypeMap,
+                             LoadDto loadDto, String queryName, final String currentFilter) {
+
+    StringBuilder resultBuilder = new StringBuilder();
+
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(queryName + ".csv"))) {
+
+        // Create headers
+        List<String> headers = new ArrayList<>(keys);
+        headers.add("eventType");
+
+        // Write headers to the CSV file
+        writer.write(String.join(",", headers));
+        writer.newLine();
+
+        // Handle batching
+        int batchSize = 100; // Set the batch size as needed
+        List<String> filters = getFiltersList(); // Assuming you have a method to get the filters list
+        List<List<String>> subLists = prepareSubLists(filters, batchSize);
+
+        boolean headerWritten = false;
+
+        for (List<String> subList : subLists) {
+
+            // Fetch the response for the current batch
+            String batchResponse = fetchBatchResponse(subList); // Assuming you have a method to fetch response for each batch
+
+            // Parse JSON data for the current batch
+            JSONObject jsonObject = new JSONObject(batchResponse);
+            JSONArray jsonArray;
+            if (containEdges) {
+                jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+            } else {
+                jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
+            }
+            Map<String, Boolean> accountsFound = new HashMap<>();
+
+            // If headers haven't been written to the resultBuilder, do it now
+            if (!headerWritten) {
+                resultBuilder.append(String.join("\t", headers)).append("\n");
+                headerWritten = true;
+            }
+
+            // Iterate over the accounts in the JSON response
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject account = jsonArray.getJSONObject(i);
+                String accountId = null;
+                List<Integer> nestedArrSizes = new ArrayList<>();
+
+                // Get the size of all the nested JSONArray present inside this account
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                    Object value = getValue(account, newKeys, null);
+                    if (value instanceof JSONArray) {
+                        nestedArrSizes.add(((JSONArray) value).length());
+                    }
+                }
+
+                // Maximum size of any nested JSONArray
+                int maxSize = nestedArrSizes.stream()
+                    .mapToInt(Integer::intValue)
+                    .max()
+                    .orElse(1);
+
+                for (int j = 0; j < maxSize; j++) {
+                    int keysIndex = 0;
+                    // Write data for the account
+                    List<String> values = new ArrayList<>();
+
+                    for (String key : keys) {
+                        String[] nestedKeys = key.split("\\.");
+                        String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                        Object value = getValue(account, newKeys, j);
+                        values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                        // Check if the current key is accountId
+                        if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(currentFilter)) {
+                            accountId = (value != null) ? value.toString() : null;
+                            accountsFound.put(accountId, true);
+                        }
+
+                        // If last iteration of for loop add "insert" or "delete"
+                        if (keysIndex == keys.size() - 1) {
+                            String eventType = (accountId != null) ? eventTypeMap.getOrDefault(accountId, "") : "";
+                            values.add("\"" + eventType + "\"");
+                        }
+                        keysIndex++;
+                    }
+
+                    // Print values
+                    System.out.println(String.join("\t", values));
+
+                    // Append the values to the resultBuilder
+                    resultBuilder.append(String.join("\t", values)).append("\n");
+
+                    // Write values to CSV
+                    writer.write(String.join(",", values));
+                    writer.newLine();
+                }
+            }
+
+            // Append hard deletes if any (consider only if needed after all batches)
+            addHardDelete(resultBuilder, keys, eventTypeMap, accountsFound);
+        }
+
+        String result = resultBuilder.toString();
+        updateStatus(loadDto, "SUCCESS");
+        System.out.println("Data has been written to " + queryName + ".csv");
+
+        // Print the result
+        System.out.println("Result:\n" + result);
+
+        containEdges = false;
+        eventTypeMap.clear();
+        return result;
+
+    } catch (IOException e) {
+        updateStatus(loadDto, "FAILED");
+        return e.getMessage();
+    }
+}
+
