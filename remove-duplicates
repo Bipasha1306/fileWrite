@@ -5,15 +5,16 @@ WHERE EmployeeID NOT IN (
     GROUP BY Email
 );
 /////////
-DELETE FROM Employees
-WHERE EmployeeID IN (
-    SELECT EmployeeID
+DELETE FROM marsods.MARS_RADIX_QUERY_DTLS_DUMMY 
+WHERE QUERY_ID IN (
+    SELECT QUERY_ID 
     FROM (
-        SELECT EmployeeID,
-               ROW_NUMBER() OVER (PARTITION BY Email ORDER BY EmployeeID) AS rn
-        FROM Employees
+        SELECT QUERY_ID, ENTITY_ID, 
+               ROW_NUMBER() OVER (PARTITION BY QUERY_ID ORDER BY ENTITY_ID) AS rn 
+        FROM marsods.MARS_RADIX_QUERY_DTLS_DUMMY 
+        WHERE ENTITY_NAME = 'Party'
     )
-    WHERE rn MOD 2 = 0
+    WHERE MOD(rn, 2) = 1
 );
 
 
