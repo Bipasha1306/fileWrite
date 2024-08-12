@@ -4,3 +4,17 @@ WHERE EmployeeID NOT IN (
     FROM Employees
     GROUP BY Email
 );
+/////////
+WITH RankedEmails AS (
+    SELECT 
+        EmployeeID,
+        Email,
+        ROW_NUMBER() OVER (PARTITION BY Email ORDER BY EmployeeID) AS rn
+    FROM Employees
+)
+DELETE FROM Employees
+WHERE EmployeeID IN (
+    SELECT EmployeeID
+    FROM RankedEmails
+    WHERE rn % 2 = 0
+);
