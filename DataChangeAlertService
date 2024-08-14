@@ -62,6 +62,36 @@ public class DataChangeAlertServiceTest {
         // Call the service method with the mock data
         dataChangeAlertService.populateDataChangeAlerts(mockDtoList);
 
+//////////
+public void populateDataChangeAlerts(final List<DataChangeAlertDto> dataChangeAlerts) {
+    List<DataChangeAlertEntity> dataChangeAlertEntities = dataChangeAlerts.stream()
+        .filter(it -> {
+            if (StringUtils.isNotEmpty(it.getEntityName()) && "AltCode".equals(it.getEntityName())) {
+                // Check if keys is null or the key alt_code_type_cd is missing
+                Map<String, String> keys = it.getKeys();
+                if (keys == null || StringUtils.isEmpty(keys.get("alt_code_type_cd"))) {
+                    return true;
+                }
+                String altCodeTypeCd = keys.get("alt_code_type_cd");
+                return "spn".equals(altCodeTypeCd);
+            }
+            return true;
+        })
+        .map(it -> {
+            try {
+                return DataChangeAlertEntity.build(it);
+            } catch (ParseException | JsonProcessingException exception) {
+                throw new RuntimeException(exception);
+            }
+        })
+        .toList();
+
+    log.info("'{}' records are supposed to be populated out of '{}' data change alerts.", dataChangeAlerts.size(), dataChangeAlertEntities.size());
+    List<List<DataChangeAlertEntity>> transSubLists = Lists.partition(dataChangeAlertEntities, batchSize);
+    transSubLists.forEach(dataChangeAlertRepository::saveAll);
+}
+
+
         // Verify that saveAll was called with the correct number of elements
         verify(dataChangeAlertRepository).saveAll(any(List.class));
     }
