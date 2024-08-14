@@ -45,3 +45,25 @@ public class DataChangeAlertServiceTest {
         verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
     }
 }
+//////////////////
+@BeforeEach
+void setUp() {
+    DataChangeAlertDto dto1 = new DataChangeAlertDto();
+    dto1.setEntityName(null);  // Intentionally setting to null for testing
+    dto1.setKeys(Map.of("alt_code_type_cd", null));  // Intentionally setting to null
+
+    DataChangeAlertDto dto2 = new DataChangeAlertDto();
+    dto2.setEntityName("OtherCode");
+    dto2.setKeys(Map.of("alt_code_type_cd", "other"));
+
+    mockDtoList = Arrays.asList(dto1, dto2);
+}
+
+@Test
+public void testPopulateDataChangeAlertsWithNulls() {
+    // Invoke the method
+    dataChangeAlertService.populateDataChangeAlerts(mockDtoList);
+
+    // Verify the repository's saveAll method was called
+    verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
+}
