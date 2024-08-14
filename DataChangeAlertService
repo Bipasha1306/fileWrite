@@ -1,0 +1,47 @@
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Arrays;
+import java.util.List;
+
+@ExtendWith(MockitoExtension.class)
+public class DataChangeAlertServiceTest {
+
+    @Mock
+    private DataChangeAlertRepository dataChangeAlertRepository;
+
+    @InjectMocks
+    private DataChangeAlertService dataChangeAlertService;
+
+    private List<DataChangeAlertDto> mockDtoList;
+
+    @BeforeEach
+    void setUp() {
+        // Setup some mock DataChangeAlertDto objects
+        DataChangeAlertDto dto1 = new DataChangeAlertDto();
+        dto1.setEntityName("AltCode");
+        dto1.setKeys(Map.of("alt_code_type_cd", "spn"));
+
+        DataChangeAlertDto dto2 = new DataChangeAlertDto();
+        dto2.setEntityName("OtherCode");
+        dto2.setKeys(Map.of("alt_code_type_cd", "other"));
+
+        mockDtoList = Arrays.asList(dto1, dto2);
+    }
+
+    @Test
+    public void testPopulateDataChangeAlerts() {
+        // Invoke the method
+        dataChangeAlertService.populateDataChangeAlerts(mockDtoList);
+
+        // Verify the repository's saveAll method was called
+        verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
+    }
+}
