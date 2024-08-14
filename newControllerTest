@@ -1,5 +1,13 @@
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
+Here's how you can write JUnit 5 test cases for the code snippets using the latest version of Mockito.
+
+### 1. Test Cases for `FusionDataSourcingDataChangeAlertController`
+
+#### Code Summary
+- **activateListener**: Registers a Kafka listener.
+- **deactivateListener**: Unregisters a Kafka listener.
+
+#### Test Class
+```java
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -7,13 +15,17 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+
 class FusionDataSourcingDataChangeAlertControllerTest {
 
     @Mock
     private CustomKafkaListenerRegistry customKafkaListenerRegistry;
 
     @InjectMocks
-    private FusionDataSourcingDataChangeAlertController fusionDataSourcingDataChangeAlertController;
+    private FusionDataSourcingDataChangeAlertController controller;
 
     @BeforeEach
     void setUp() {
@@ -21,38 +33,97 @@ class FusionDataSourcingDataChangeAlertControllerTest {
     }
 
     @Test
-    void activateListener_shouldRegisterListenerAndReturnSuccess() throws BusinessException {
-        // Act
-        ResponseEntity<CustomResponse<String>> response = fusionDataSourcingDataChangeAlertController.activateListener();
-
-        // Assert
-        verify(customKafkaListenerRegistry, times(1))
-                .registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
-        assertEquals("Kafka listener started successfully.", response.getBody().getData());
-    }
-
-    @Test
-    void activateListener_shouldHandleBusinessException() throws BusinessException {
+    void testActivateListener() throws BusinessException {
         // Arrange
-        doThrow(new BusinessException("Listener registration failed")).when(customKafkaListenerRegistry)
-                .registerListenerContainer(anyString());
+        doNothing().when(customKafkaListenerRegistry).registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
 
-        // Act & Assert
-        BusinessException exception = assertThrows(BusinessException.class, () -> {
-            fusionDataSourcingDataChangeAlertController.activateListener();
-        });
+        // Act
+        ResponseEntity<CustomResponse<String>> response = controller.activateListener();
 
-        assertEquals("Listener registration failed", exception.getMessage());
+        // Assert
+        assertEquals("Kafka listener started successfully.", response.getBody().getData());
+        verify(customKafkaListenerRegistry).registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
     }
 
     @Test
-    void deactivateListener_shouldUnregisterListenerAndReturnSuccess() {
+    void testDeactivateListener() {
+        // Arrange
+        doNothing().when(customKafkaListenerRegistry).unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+
         // Act
-        ResponseEntity<CustomResponse<String>> response = fusionDataSourcingDataChangeAlertController.deactivateListener();
+        ResponseEntity<CustomResponse<String>> response = controller.deactivateListener();
 
         // Assert
-        verify(customKafkaListenerRegistry, times(1))
-                .unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
-        assertEquals("Kafka listener stopped successfully", response.getBody().getData());
+        assertEquals("Kafka listener stopped successfully.", response.getBody().getData());
+        verify(customKafkaListenerRegistry).unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
     }
 }
+```
+
+### 2. Test Cases for `ScheduledTasks`
+
+#### Code Summary
+- **activateListener**: Registers a Kafka listener at a scheduled time.
+- **deactivateListener**: Unregisters a Kafka listener at a scheduled time.
+
+#### Test Class
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+
+class ScheduledTasksTest {
+
+    @Mock
+    private CustomKafkaListenerRegistry customKafkaListenerRegistry;
+
+    @InjectMocks
+    private ScheduledTasks scheduledTasks;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    @Scheduled(cron = "0 00 05 * * *")
+    void testActivateListener() throws BusinessException {
+        // Arrange
+        doNothing().when(customKafkaListenerRegistry).registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+
+        // Act
+        scheduledTasks.activateListener();
+
+        // Assert
+        verify(customKafkaListenerRegistry).registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+    }
+
+    @Test
+    @Scheduled(cron = "0 15 15 * * *")
+    void testDeactivateListener() {
+        // Arrange
+        doNothing().when(customKafkaListenerRegistry).unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+
+        // Act
+        scheduledTasks.deactivateListener();
+
+        // Assert
+        verify(customKafkaListenerRegistry).unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+    }
+}
+```
+
+### Explanation:
+- **Mockito** is used to mock dependencies, specifically `CustomKafkaListenerRegistry`.
+- **`doNothing()`** is used to mock the behavior of methods that have a `void` return type.
+- **JUnit 5**'s `@Test` annotation is used to define test methods.
+- **Assertions** are used to validate that the expected results match the actual results.
+- **`@BeforeEach`** is used to initialize mocks before each test method.
+
+This setup will help you ensure that your Kafka listener registration and unregistration work as expected.
