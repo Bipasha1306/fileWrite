@@ -1,0 +1,58 @@
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.ResponseEntity;
+
+class FusionDataSourcingDataChangeAlertControllerTest {
+
+    @Mock
+    private CustomKafkaListenerRegistry customKafkaListenerRegistry;
+
+    @InjectMocks
+    private FusionDataSourcingDataChangeAlertController fusionDataSourcingDataChangeAlertController;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void activateListener_shouldRegisterListenerAndReturnSuccess() throws BusinessException {
+        // Act
+        ResponseEntity<CustomResponse<String>> response = fusionDataSourcingDataChangeAlertController.activateListener();
+
+        // Assert
+        verify(customKafkaListenerRegistry, times(1))
+                .registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+        assertEquals("Kafka listener started successfully.", response.getBody().getData());
+    }
+
+    @Test
+    void activateListener_shouldHandleBusinessException() throws BusinessException {
+        // Arrange
+        doThrow(new BusinessException("Listener registration failed")).when(customKafkaListenerRegistry)
+                .registerListenerContainer(anyString());
+
+        // Act & Assert
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            fusionDataSourcingDataChangeAlertController.activateListener();
+        });
+
+        assertEquals("Listener registration failed", exception.getMessage());
+    }
+
+    @Test
+    void deactivateListener_shouldUnregisterListenerAndReturnSuccess() {
+        // Act
+        ResponseEntity<CustomResponse<String>> response = fusionDataSourcingDataChangeAlertController.deactivateListener();
+
+        // Assert
+        verify(customKafkaListenerRegistry, times(1))
+                .unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+        assertEquals("Kafka listener stopped successfully", response.getBody().getData());
+    }
+}
