@@ -1,0 +1,64 @@
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.kafka.support.Acknowledgment;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.util.StopWatch;
+
+import java.util.ArrayList;
+import java.util.List;
+
+class DataChangeAlertListenerTest {
+
+    @Mock
+    private DataChangeAlertService dataChangeAlertService;
+
+    @InjectMocks
+    private DataChangeAlertListener dataChangeAlertListener;
+
+    @Mock
+    private Acknowledgment acknowledgment;
+
+    @Mock
+    private Consumer<String, String> consumer;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void onMessage_shouldProcessRecordsAndAcknowledge() throws Exception {
+        // Arrange
+        List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "{\"someField\":\"someValue\"}");
+        consumerRecords.add(consumerRecord);
+
+        // Act
+        dataChangeAlertListener.onMessage(consumerRecords, acknowledgment, consumer);
+
+        // Assert
+        verify(dataChangeAlertService, times(1)).populateDataChangeAlerts(anyList());
+        verify(acknowledgment, times(1)).acknowledge();
+    }
+
+    @Test
+    void onMessage_shouldHandleExceptionAndNotAcknowledge() throws Exception {
+        // Arrange
+        List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "invalid json");
+        consumerRecords.add(consumerRecord);
+
+        // Act
+        dataChangeAlertListener.onMessage(consumerRecords, acknowledgment, consumer);
+
+        // Assert
+        verify(dataChangeAlertService, times(0)).populateDataChangeAlerts(anyList());
+        verify(acknowledgment, times(0)).acknowledge();
+    }
+}
