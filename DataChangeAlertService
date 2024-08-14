@@ -1,9 +1,9 @@
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -14,17 +14,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 public class DataChangeAlertServiceTest {
 
     @Mock
     private DataChangeAlertRepository dataChangeAlertRepository;
-
-    @Mock
-    private Logger log;
 
     @InjectMocks
     private DataChangeAlertService dataChangeAlertService;
@@ -33,64 +28,38 @@ public class DataChangeAlertServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Create mock DataChangeAlertDto objects with various scenarios
+        // Creating mock DTOs with various scenarios, including null fields
         DataChangeAlertDto dto1 = new DataChangeAlertDto();
         dto1.setEntityName("AltCode");
         dto1.setKeys(Map.of("alt_code_type_cd", "spn"));
+        dto1.setEventId("1");
+        dto1.setTimestamp("2023-08-13T12:34:56");
 
         DataChangeAlertDto dto2 = new DataChangeAlertDto();
         dto2.setEntityName("AltCode");
-        dto2.setKeys(Map.of("alt_code_type_cd", "other"));
+        dto2.setKeys(null);  // Null keys to simulate the issue
+        dto2.setEventId("2");
+        dto2.setTimestamp("2023-08-13T12:34:56");
 
         DataChangeAlertDto dto3 = new DataChangeAlertDto();
-        dto3.setEntityName("OtherCode");
-        dto3.setKeys(Map.of("alt_code_type_cd", "other"));
+        dto3.setEntityName("AltCode");
+        dto3.setKeys(Collections.emptyMap());  // Empty keys
+        dto3.setEventId(null);  // Null event ID to simulate the issue
+        dto3.setTimestamp(null);  // Null timestamp to simulate the issue
 
-        // This DTO will have null keys, simulating a potential source of NullPointerException
         DataChangeAlertDto dto4 = new DataChangeAlertDto();
-        dto4.setEntityName("AltCode");
-        dto4.setKeys(null);
+        dto4.setEntityName("OtherCode");
+        dto4.setKeys(Map.of("alt_code_type_cd", "other"));
+        dto4.setEventId("3");
+        dto4.setTimestamp("2023-08-13T12:34:56");
 
         mockDtoList = Arrays.asList(dto1, dto2, dto3, dto4);
-
-        // Setup logging mock to avoid null pointer
-        log = LoggerFactory.getLogger(DataChangeAlertServiceTest.class);
     }
 
     @Test
-    void testPopulateDataChangeAlerts() throws ParseException, JsonProcessingException {
-        // Call the service method with the mock data
+    void testPopulateDataChangeAlertsWithNulls() throws ParseException, JsonProcessingException {
+        // Call the service method with mock data containing nulls
         dataChangeAlertService.populateDataChangeAlerts(mockDtoList);
-
-//////////
-public void populateDataChangeAlerts(final List<DataChangeAlertDto> dataChangeAlerts) {
-    List<DataChangeAlertEntity> dataChangeAlertEntities = dataChangeAlerts.stream()
-        .filter(it -> {
-            if (StringUtils.isNotEmpty(it.getEntityName()) && "AltCode".equals(it.getEntityName())) {
-                // Check if keys is null or the key alt_code_type_cd is missing
-                Map<String, String> keys = it.getKeys();
-                if (keys == null || StringUtils.isEmpty(keys.get("alt_code_type_cd"))) {
-                    return true;
-                }
-                String altCodeTypeCd = keys.get("alt_code_type_cd");
-                return "spn".equals(altCodeTypeCd);
-            }
-            return true;
-        })
-        .map(it -> {
-            try {
-                return DataChangeAlertEntity.build(it);
-            } catch (ParseException | JsonProcessingException exception) {
-                throw new RuntimeException(exception);
-            }
-        })
-        .toList();
-
-    log.info("'{}' records are supposed to be populated out of '{}' data change alerts.", dataChangeAlerts.size(), dataChangeAlertEntities.size());
-    List<List<DataChangeAlertEntity>> transSubLists = Lists.partition(dataChangeAlertEntities, batchSize);
-    transSubLists.forEach(dataChangeAlertRepository::saveAll);
-}
-
 
         // Verify that saveAll was called with the correct number of elements
         verify(dataChangeAlertRepository).saveAll(any(List.class));
