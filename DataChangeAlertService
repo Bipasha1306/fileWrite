@@ -67,3 +67,20 @@ public void testPopulateDataChangeAlertsWithNulls() {
     // Verify the repository's saveAll method was called
     verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
 }
+//////////
+@Test
+public void testPopulateDataChangeAlertsWithNullValues() {
+    // Setup a mock DataChangeAlertDto with null fields
+    DataChangeAlertDto dtoWithNulls = new DataChangeAlertDto();
+    dtoWithNulls.setEntityName(null);
+    dtoWithNulls.setKeys(null);
+
+    List<DataChangeAlertDto> dtoListWithNulls = Arrays.asList(dtoWithNulls);
+
+    // Invoke the method
+    assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(dtoListWithNulls));
+
+    // Verify the repository's saveAll method was called
+    verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
+}
+
