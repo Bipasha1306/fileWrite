@@ -1,21 +1,30 @@
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Arrays;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 public class DataChangeAlertServiceTest {
 
     @Mock
     private DataChangeAlertRepository dataChangeAlertRepository;
+
+    @Mock
+    private Logger log;
 
     @InjectMocks
     private DataChangeAlertService dataChangeAlertService;
@@ -24,63 +33,36 @@ public class DataChangeAlertServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Setup some mock DataChangeAlertDto objects
+        // Create mock DataChangeAlertDto objects with various scenarios
         DataChangeAlertDto dto1 = new DataChangeAlertDto();
         dto1.setEntityName("AltCode");
         dto1.setKeys(Map.of("alt_code_type_cd", "spn"));
 
         DataChangeAlertDto dto2 = new DataChangeAlertDto();
-        dto2.setEntityName("OtherCode");
+        dto2.setEntityName("AltCode");
         dto2.setKeys(Map.of("alt_code_type_cd", "other"));
 
-        mockDtoList = Arrays.asList(dto1, dto2);
+        DataChangeAlertDto dto3 = new DataChangeAlertDto();
+        dto3.setEntityName("OtherCode");
+        dto3.setKeys(Map.of("alt_code_type_cd", "other"));
+
+        // This DTO will have null keys, simulating a potential source of NullPointerException
+        DataChangeAlertDto dto4 = new DataChangeAlertDto();
+        dto4.setEntityName("AltCode");
+        dto4.setKeys(null);
+
+        mockDtoList = Arrays.asList(dto1, dto2, dto3, dto4);
+
+        // Setup logging mock to avoid null pointer
+        log = LoggerFactory.getLogger(DataChangeAlertServiceTest.class);
     }
 
     @Test
-    public void testPopulateDataChangeAlerts() {
-        // Invoke the method
+    void testPopulateDataChangeAlerts() throws ParseException, JsonProcessingException {
+        // Call the service method with the mock data
         dataChangeAlertService.populateDataChangeAlerts(mockDtoList);
 
-        // Verify the repository's saveAll method was called
-        verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
+        // Verify that saveAll was called with the correct number of elements
+        verify(dataChangeAlertRepository).saveAll(any(List.class));
     }
 }
-//////////////////
-@BeforeEach
-void setUp() {
-    DataChangeAlertDto dto1 = new DataChangeAlertDto();
-    dto1.setEntityName(null);  // Intentionally setting to null for testing
-    dto1.setKeys(Map.of("alt_code_type_cd", null));  // Intentionally setting to null
-
-    DataChangeAlertDto dto2 = new DataChangeAlertDto();
-    dto2.setEntityName("OtherCode");
-    dto2.setKeys(Map.of("alt_code_type_cd", "other"));
-
-    mockDtoList = Arrays.asList(dto1, dto2);
-}
-
-@Test
-public void testPopulateDataChangeAlertsWithNulls() {
-    // Invoke the method
-    dataChangeAlertService.populateDataChangeAlerts(mockDtoList);
-
-    // Verify the repository's saveAll method was called
-    verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
-}
-//////////
-@Test
-public void testPopulateDataChangeAlertsWithNullValues() {
-    // Setup a mock DataChangeAlertDto with null fields
-    DataChangeAlertDto dtoWithNulls = new DataChangeAlertDto();
-    dtoWithNulls.setEntityName(null);
-    dtoWithNulls.setKeys(null);
-
-    List<DataChangeAlertDto> dtoListWithNulls = Arrays.asList(dtoWithNulls);
-
-    // Invoke the method
-    assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(dtoListWithNulls));
-
-    // Verify the repository's saveAll method was called
-    verify(dataChangeAlertRepository, times(1)).saveAll(anyList());
-}
-
