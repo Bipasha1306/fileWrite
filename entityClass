@@ -1,0 +1,60 @@
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class DataChangeAlertEntityTest {
+
+    private DataChangeAlertDto mockDto;
+
+    @BeforeEach
+    public void setup() {
+        // Mocking DataChangeAlertDto for testing
+        mockDto = Mockito.mock(DataChangeAlertDto.class);
+        Mockito.when(mockDto.getTimestamp()).thenReturn("2024-08-12 12:30:00");
+        Mockito.when(mockDto.getKeys()).thenReturn("Sample keys");
+        Mockito.when(mockDto.getEventId()).thenReturn("12345");
+        Mockito.when(mockDto.getEntityName()).thenReturn("EntityName");
+        Mockito.when(mockDto.getEventType()).thenReturn("UPDATE");
+        Mockito.when(mockDto.getTowerCode()).thenReturn("SOURCE_SYSTEM_1");
+        Mockito.when(mockDto.getOffset()).thenReturn("OFFSET_123");
+    }
+
+    @Test
+    public void testBuild() throws ParseException, JsonProcessingException {
+        // Act: Creating entity from the dto
+        DataChangeAlertEntity entity = DataChangeAlertEntity.build(mockDto);
+
+        // Assert: Verify that entity fields are correctly set from dto
+        assertEquals(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse("2024-08-12 12:30:00"), entity.getCycleDate());
+        assertEquals("{\"keys\":\"Sample keys\"}", entity.getNotification());
+        assertEquals(12345L, entity.getEventId());
+        assertEquals("EntityName", entity.getEntityName());
+        assertEquals("UPDATE", entity.getEventType());
+        assertEquals("SOURCE_SYSTEM_1", entity.getSourceSystem());
+        assertEquals("OFFSET_123", entity.getOffsetValue());
+        assertEquals("From Panda with offset: OFFSET_123", entity.getComments());
+    }
+
+    @Test
+    public void testPrePersist() {
+        // Arrange: Create entity
+        DataChangeAlertEntity entity = new DataChangeAlertEntity();
+
+        // Act: Manually invoking prePersist (since in JPA it gets called automatically)
+        entity.prePersist();
+
+        // Assert: Verify that fields are set as per prePersist logic
+        assertEquals("N", entity.getIsProcessed());
+        assertEquals("From Panda", entity.getComments());
+        assertEquals("SYSTEM", entity.getAuditCreateBy());
+        assertNotNull(entity.getAuditCreateTs());
+        assertEquals("SYSTEM", entity.getAuditUpdatedBy());
+        assertNotNull(entity.getAuditUpdateTs());
+    }
+}
