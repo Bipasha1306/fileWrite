@@ -394,5 +394,70 @@ class ScheduledTasksTest {
         assertDoesNotThrow(() -> scheduledTasks.deactivateListener(), "Deactivate Listener should not throw any exception");
     }
 }
+/////////////////
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.kafka.support.Acknowledgment;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.util.StopWatch;
+
+import java.util.ArrayList;
+import java.util.List;
+
+class DataChangeAlertListenerTest {
+
+    @Mock
+    private DataChangeAlertService dataChangeAlertService;
+
+    @InjectMocks
+    private DataChangeAlertListener dataChangeAlertListener;
+
+    @Mock
+    private Acknowledgment acknowledgment;
+
+    @Mock
+    private Consumer<String, String> consumer;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void onMessage_shouldProcessRecordsAndAcknowledge() throws Exception {
+        // Arrange
+        List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "{\"someField\":\"someValue\"}");
+        consumerRecords.add(consumerRecord);
+
+        doNothing().when(dataChangeAlertService).populateDataChangeAlerts(anyList());
+        doNothing().when(acknowledgment).acknowledge();
+
+        // Act & Assert
+        assertDoesNotThrow(() -> dataChangeAlertListener.onMessage(consumerRecords, acknowledgment, consumer), 
+                           "Processing records and acknowledgment should not throw any exception");
+    }
+
+    @Test
+    void onMessage_shouldHandleExceptionAndNotAcknowledge() throws Exception {
+        // Arrange
+        List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 0, 0L, "key", "invalid json");
+        consumerRecords.add(consumerRecord);
+
+        // Simulate exception during data processing
+        doThrow(new RuntimeException("Invalid data")).when(dataChangeAlertService).populateDataChangeAlerts(anyList());
+
+        // Act & Assert
+        assertDoesNotThrow(() -> dataChangeAlertListener.onMessage(consumerRecords, acknowledgment, consumer), 
+                           "Exception handling should not throw any exception");
+    }
+}
 
 
