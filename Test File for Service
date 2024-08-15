@@ -253,4 +253,102 @@ public static DataChangeAlertEntity build(DataChangeAlertDto dataChangeAlertDto)
     return dataChangeAlertEntity;
 }
 
+////////////////////
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.text.ParseException;
+import java.util.*;
+
+@ExtendWith(MockitoExtension.class)
+public class DataChangeAlertServiceTest {
+
+    @Spy
+    private DataChangeAlertRepository dataChangeAlertRepository;  // Spy for the repository
+
+    @InjectMocks
+    private DataChangeAlertService dataChangeAlertService;
+
+    private List<DataChangeAlertDto> mockDtoList;
+
+    @BeforeEach
+    void setUp() {
+        // Use valid timestamp format
+        String validTimestamp = "2024-07-29T10:00:00.0000000Z"; // Example format, ensure it matches
+
+        // Create DTOs with various scenarios
+        DataChangeAlertDto dto1 = new DataChangeAlertDto();
+        dto1.setEntityName("AltCode");
+        dto1.setKeys(Map.of("alt_code_type_cd", "spn"));
+        dto1.setEventId("1");
+        dto1.setTimestamp(validTimestamp);
+
+        DataChangeAlertDto dto2 = new DataChangeAlertDto();
+        dto2.setEntityName("AltCode");
+        dto2.setKeys(null);  // Null keys to simulate the issue
+        dto2.setEventId("2");
+        dto2.setTimestamp(validTimestamp);
+
+        DataChangeAlertDto dto3 = new DataChangeAlertDto();
+        dto3.setEntityName("AltCode");
+        dto3.setKeys(Collections.emptyMap());  // Empty keys
+        dto3.setEventId("3");
+        dto3.setTimestamp(validTimestamp);
+
+        mockDtoList = Arrays.asList(dto1, dto2, dto3);
+    }
+
+    @Test
+    void testPopulateDataChangeAlerts() throws ParseException, JsonProcessingException {
+        // Mocking the batchSize field
+        ReflectionTestUtils.setField(dataChangeAlertService, "batchSize", 10);
+
+        // Call the method
+        assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(mockDtoList));
+
+        // Verify that saveAll was called with the correct batch size
+        verify(dataChangeAlertRepository, atLeastOnce()).saveAll(anyList());
+    }
+
+    @Test
+    void testWithInvalidKeys() {
+        DataChangeAlertDto dtoWithNullKeys = new DataChangeAlertDto();
+        dtoWithNullKeys.setEntityName("AltCode");
+        dtoWithNullKeys.setKeys(null);  // Null keys to simulate the issue
+        dtoWithNullKeys.setEventId("valid_event_id");
+        dtoWithNullKeys.setTimestamp("2024-07-29T10:00:00.0000000Z");
+
+        List<DataChangeAlertDto> dtoList = Collections.singletonList(dtoWithNullKeys);
+
+        // Call the method
+        assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(dtoList));
+
+        // Verify that saveAll was not called
+        verify(dataChangeAlertRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void testWithEmptyDtoList() {
+        List<DataChangeAlertDto> emptyDtoList = Collections.emptyList();
+
+        // Call the method
+        assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(emptyDtoList));
+
+        // Verify that saveAll was not called for an empty list
+        verify(dataChangeAlertRepository, never()).saveAll(anyList());
+    }
+}
+
+
 
