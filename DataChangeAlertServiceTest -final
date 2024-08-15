@@ -1,0 +1,111 @@
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+@ExtendWith(MockitoExtension.class)
+public class DataChangeAlertServiceTest {
+
+    @Spy
+    private DataChangeAlertRepository dataChangeAlertRepository;
+
+    @InjectMocks
+    private DataChangeAlertService dataChangeAlertService;
+
+    private List<DataChangeAlertDto> mockDtoList;
+
+    @BeforeEach
+    void setUp() {
+        DataChangeAlertDto dto1 = new DataChangeAlertDto();
+        dto1.setEntityName("AltCode");
+        dto1.setKeys(Map.of("alt_code_type_cd", "spn"));
+        dto1.setEventId("1");
+        dto1.setTimestamp("2023-08-13T12:34:56");
+
+        DataChangeAlertDto dto2 = new DataChangeAlertDto();
+        dto2.setEntityName("AltCode");
+        dto2.setKeys(null);  // Null keys to simulate the issue
+        dto2.setEventId("2");
+        dto2.setTimestamp("2023-08-13T12:34:56");
+
+        DataChangeAlertDto dto3 = new DataChangeAlertDto();
+        dto3.setEntityName("AltCode");
+        dto3.setKeys(Collections.emptyMap());  // Empty keys
+        dto3.setEventId(null);  // Null event ID to simulate the issue
+        dto3.setTimestamp(null);  // Null timestamp to simulate the issue
+
+        DataChangeAlertDto dto4 = new DataChangeAlertDto();
+        dto4.setEntityName("OtherCode");
+        dto4.setKeys(Map.of("alt_code_type_cd", "other"));
+        dto4.setEventId("3");
+        dto4.setTimestamp("2023-08-13T12:34:56");
+
+        mockDtoList = Arrays.asList(dto1, dto2, dto3, dto4);
+    }
+
+    @Test
+    void testPopulateDataChangeAlerts() throws ParseException, JsonProcessingException {
+        // Calling the method to ensure it processes without exceptions
+        assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(mockDtoList));
+
+        // Using assertions to check if saveAll was not called
+        assertEquals(0, ((List<?>) ((SpyInvocationHandler) dataChangeAlertRepository).getInvocations()).size());
+    }
+
+    @Test
+    void testWithInvalidKeysAndNullFields() {
+        DataChangeAlertDto dtoWithNullKeys = new DataChangeAlertDto();
+        dtoWithNullKeys.setEntityName("AltCode");
+        dtoWithNullKeys.setKeys(null);  // Null keys to simulate the issue
+
+        List<DataChangeAlertDto> dtoList = Collections.singletonList(dtoWithNullKeys);
+
+        // Calling the method to ensure it processes without exceptions
+        assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(dtoList));
+
+        // Using assertions to check if saveAll was not called
+        assertEquals(0, ((List<?>) ((SpyInvocationHandler) dataChangeAlertRepository).getInvocations()).size());
+    }
+
+    @Test
+    void testWithEmptyDtoList() {
+        List<DataChangeAlertDto> emptyDtoList = Collections.emptyList();
+
+        // Calling the method with an empty list, should not throw exceptions
+        assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(emptyDtoList));
+
+        // Using assertions to check if saveAll was not called
+        assertEquals(0, ((List<?>) ((SpyInvocationHandler) dataChangeAlertRepository).getInvocations()).size());
+    }
+
+    @Test
+    void testExceptionHandlingInBuildMethod() throws ParseException, JsonProcessingException {
+        DataChangeAlertDto dtoWithInvalidData = new DataChangeAlertDto();
+        dtoWithInvalidData.setEntityName("AltCode");
+        dtoWithInvalidData.setKeys(Map.of("alt_code_type_cd", "spn"));
+        dtoWithInvalidData.setEventId("invalid_event_id"); // Invalid long value for eventId
+        dtoWithInvalidData.setTimestamp("invalid_timestamp"); // Invalid date format
+
+        List<DataChangeAlertDto> dtoList = Collections.singletonList(dtoWithInvalidData);
+
+        // Check that the exception is properly handled and logged
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            dataChangeAlertService.populateDataChangeAlerts(dtoList);
+        });
+
+        assertTrue(exception.getCause() instanceof ParseException || exception.getCause() instanceof JsonProcessingException);
+    }
+}
