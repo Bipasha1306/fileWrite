@@ -194,3 +194,63 @@ public class DataChangeAlertServiceTest {
     }
 }
 
+/////////////////////////////
+import java.util.Optional;
+
+public static DataChangeAlertEntity build(DataChangeAlertDto dataChangeAlertDto) throws ParseException, JsonProcessingException {
+    var dataChangeAlertEntity = new DataChangeAlertEntity();
+
+    // Handle and validate timestamp
+    String timestamp = dataChangeAlertDto.getTimestamp();
+    var dateFormat = new SimpleDateFormat(CommonConstants.TIMESTAMP_FORMAT_WITH_ALL);
+
+    dataChangeAlertEntity.setCycleDate(
+        Optional.ofNullable(timestamp)
+                .filter(t -> !t.isEmpty())
+                .map(t -> {
+                    try {
+                        return dateFormat.parse(t);
+                    } catch (ParseException e) {
+                        throw new IllegalArgumentException("Invalid date format for timestamp", e);
+                    }
+                })
+                .orElseThrow(() -> new IllegalArgumentException("Timestamp cannot be null or empty"))
+    );
+
+    // Handle and validate event ID
+    String eventIdStr = dataChangeAlertDto.getEventId();
+    dataChangeAlertEntity.setEventId(
+        Optional.ofNullable(eventIdStr)
+                .filter(eid -> !eid.isEmpty())
+                .map(eid -> {
+                    try {
+                        return Long.parseLong(eid);
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid format for event ID", e);
+                    }
+                })
+                .orElseThrow(() -> new IllegalArgumentException("Event ID cannot be null or empty"))
+    );
+
+    // Handle other fields with null checks
+    dataChangeAlertEntity.setNotification(
+        Optional.ofNullable(dataChangeAlertDto.getKeys())
+                .map(keys -> {
+                    try {
+                        return new ObjectMapper().writeValueAsString(keys);
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException("Error converting keys to JSON", e);
+                    }
+                })
+                .orElse("No Notification")
+    );
+    dataChangeAlertEntity.setEntityName(Optional.ofNullable(dataChangeAlertDto.getEntityName()).orElse("Unknown Entity"));
+    dataChangeAlertEntity.setEventType(Optional.ofNullable(dataChangeAlertDto.getEventType()).orElse("Unknown Type"));
+    dataChangeAlertEntity.setSourceSystem(Optional.ofNullable(dataChangeAlertDto.getTowerCode()).orElse("Unknown Tower"));
+    dataChangeAlertEntity.setOffsetValue(Optional.ofNullable(dataChangeAlertDto.getOffset()).orElse("No Offset"));
+    dataChangeAlertEntity.setComments("From Panda with offset: " + Optional.ofNullable(dataChangeAlertDto.getOffset()).orElse("None"));
+
+    return dataChangeAlertEntity;
+}
+
+
