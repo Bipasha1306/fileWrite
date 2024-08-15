@@ -1,13 +1,11 @@
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.text.ParseException;
@@ -19,7 +17,7 @@ import java.util.Map;
 @ExtendWith(MockitoExtension.class)
 public class DataChangeAlertServiceTest {
 
-    @Spy
+    @Mock
     private DataChangeAlertRepository dataChangeAlertRepository;
 
     @InjectMocks
@@ -29,6 +27,9 @@ public class DataChangeAlertServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Mocking the batchSize field
+        ReflectionTestUtils.setField(dataChangeAlertService, "batchSize", 10);
+
         DataChangeAlertDto dto1 = new DataChangeAlertDto();
         dto1.setEntityName("AltCode");
         dto1.setKeys(Map.of("alt_code_type_cd", "spn"));
@@ -58,11 +59,7 @@ public class DataChangeAlertServiceTest {
 
     @Test
     void testPopulateDataChangeAlerts() throws ParseException, JsonProcessingException {
-        // Calling the method to ensure it processes without exceptions
         assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(mockDtoList));
-
-        // Assert that saveAll was not called
-        // Use Mockito.verify() to check interactions
         verify(dataChangeAlertRepository, never()).saveAll(anyList());
     }
 
@@ -70,14 +67,11 @@ public class DataChangeAlertServiceTest {
     void testWithInvalidKeysAndNullFields() {
         DataChangeAlertDto dtoWithNullKeys = new DataChangeAlertDto();
         dtoWithNullKeys.setEntityName("AltCode");
-        dtoWithNullKeys.setKeys(null);  // Null keys to simulate the issue
+        dtoWithNullKeys.setKeys(null);
 
         List<DataChangeAlertDto> dtoList = Collections.singletonList(dtoWithNullKeys);
 
-        // Calling the method to ensure it processes without exceptions
         assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(dtoList));
-
-        // Assert that saveAll was not called
         verify(dataChangeAlertRepository, never()).saveAll(anyList());
     }
 
@@ -85,10 +79,7 @@ public class DataChangeAlertServiceTest {
     void testWithEmptyDtoList() {
         List<DataChangeAlertDto> emptyDtoList = Collections.emptyList();
 
-        // Calling the method with an empty list, should not throw exceptions
         assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(emptyDtoList));
-
-        // Assert that saveAll was not called
         verify(dataChangeAlertRepository, never()).saveAll(anyList());
     }
 
@@ -97,12 +88,11 @@ public class DataChangeAlertServiceTest {
         DataChangeAlertDto dtoWithInvalidData = new DataChangeAlertDto();
         dtoWithInvalidData.setEntityName("AltCode");
         dtoWithInvalidData.setKeys(Map.of("alt_code_type_cd", "spn"));
-        dtoWithInvalidData.setEventId("invalid_event_id"); // Invalid long value for eventId
-        dtoWithInvalidData.setTimestamp("invalid_timestamp"); // Invalid date format
+        dtoWithInvalidData.setEventId("invalid_event_id");
+        dtoWithInvalidData.setTimestamp("invalid_timestamp");
 
         List<DataChangeAlertDto> dtoList = Collections.singletonList(dtoWithInvalidData);
 
-        // Check that the exception is properly handled and logged
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             dataChangeAlertService.populateDataChangeAlerts(dtoList);
         });
