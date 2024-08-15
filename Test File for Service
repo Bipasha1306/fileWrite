@@ -350,5 +350,49 @@ public class DataChangeAlertServiceTest {
     }
 }
 
+////////////////
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import static org.mockito.Mockito.doNothing;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+class ScheduledTasksTest {
+
+    @Mock
+    private CustomKafkaListenerRegistry customKafkaListenerRegistry;
+
+    @InjectMocks
+    private ScheduledTasks scheduledTasks;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    @Scheduled(cron = "0 00 05 * * *")
+    void testActivateListener() throws BusinessException {
+        // Arrange
+        doNothing().when(customKafkaListenerRegistry).registerListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+
+        // Act & Assert
+        assertDoesNotThrow(() -> scheduledTasks.activateListener(), "Activate Listener should not throw any exception");
+    }
+
+    @Test
+    @Scheduled(cron = "0 15 15 * * *")
+    void testDeactivateListener() {
+        // Arrange
+        doNothing().when(customKafkaListenerRegistry).unregisterListenerContainer(KafkaTopics.getTopicListenerIdByDataLoadType(DataLoadTypes.DATA_CHANGE_ALERT));
+
+        // Act & Assert
+        assertDoesNotThrow(() -> scheduledTasks.deactivateListener(), "Deactivate Listener should not throw any exception");
+    }
+}
 
 
