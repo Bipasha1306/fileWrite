@@ -61,8 +61,9 @@ public class DataChangeAlertServiceTest {
         // Calling the method to ensure it processes without exceptions
         assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(mockDtoList));
 
-        // Using assertions to check if saveAll was not called
-        assertEquals(0, ((List<?>) ((SpyInvocationHandler) dataChangeAlertRepository).getInvocations()).size());
+        // Assert that saveAll was not called
+        // Use Mockito.verify() to check interactions
+        verify(dataChangeAlertRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -76,8 +77,8 @@ public class DataChangeAlertServiceTest {
         // Calling the method to ensure it processes without exceptions
         assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(dtoList));
 
-        // Using assertions to check if saveAll was not called
-        assertEquals(0, ((List<?>) ((SpyInvocationHandler) dataChangeAlertRepository).getInvocations()).size());
+        // Assert that saveAll was not called
+        verify(dataChangeAlertRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -87,8 +88,8 @@ public class DataChangeAlertServiceTest {
         // Calling the method with an empty list, should not throw exceptions
         assertDoesNotThrow(() -> dataChangeAlertService.populateDataChangeAlerts(emptyDtoList));
 
-        // Using assertions to check if saveAll was not called
-        assertEquals(0, ((List<?>) ((SpyInvocationHandler) dataChangeAlertRepository).getInvocations()).size());
+        // Assert that saveAll was not called
+        verify(dataChangeAlertRepository, never()).saveAll(anyList());
     }
 
     @Test
