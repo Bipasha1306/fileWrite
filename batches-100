@@ -282,3 +282,111 @@ private List<List<String>> createSublists(List<String> list, int batchSize) {
 
     return sublists;
 }
+//////////////////////---
+@Transactional
+public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessException {
+    // STEP-1: Insert record into the load table
+    LoadDto loadDto = insertLoad(queryName); 
+
+    // STEP-2: Get query from spring cloud config
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+    if (radixQueryProperties.isEmpty()) {
+        throw new BusinessException("Query name is incorrect");
+    }
+
+    Map<String, String> entityAndFilterColumn = baseService.getEntitiesAndFilterColumnsByQuery(radixQueryProperties);
+
+    // STEP-3: Get filters from Notification table
+    Map<String, Object> filters = getFilters(entityAndFilterColumn);
+    String currentFilter = getCurrentFilter(entityAndFilterColumn); // Utility method to retrieve current filter
+
+    // Get eventTypeMap from the Notification table
+    Map<String, String> eventTypeMap = getEventTypeMap();
+
+    // STEP-4: Return empty values if eventTypeMap is empty
+    if (eventTypeMap.isEmpty()) {
+        updateStatus(loadDto, "SUCCESS"); // Confirm if this is the right place to update
+        return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(null).build();
+    }
+
+    // Extract operation name from the GraphQL query
+    String graphQLQuery = radixQueryProperties.get().getRadixQuery();
+    Pattern pattern = Pattern.compile("^(\\s*(query|mutation|subscription)\\s+(\\w+).*)", Pattern.DOTALL);
+    Matcher matcher = pattern.matcher(graphQLQuery);
+    String operationName = "";
+    if (matcher.find()) {
+        operationName = matcher.group(3); // Correctly extract the operation name
+        System.out.println("Operation Type: " + matcher.group(2));
+        System.out.println("Operation Name: " + operationName);
+    } else {
+        System.out.println("Operation name not found.");
+    }
+
+    // STEP-5: Process the filters and eventTypeMap in batches
+    Map<String, List<String>> filtersByEntity = prepareFiltersByEntity(filters); // Assuming filters are entity-specific
+    List<List<String>> sublists = createSublistsFromFiltersAndEventTypeMap(eventTypeMap, filtersByEntity);
+
+    StringBuilder finalResult = new StringBuilder();
+    boolean writeHeaders = true; // Ensure headers are written only once
+
+    for (List<String> sublistFilters : sublists) {
+        // Modify filters map to use sublistFilters
+        Map<String, Object> modifiedFilters = new HashMap<>(filters);
+        modifiedFilters.put(currentFilter, sublistFilters);
+
+        // STEP-6: Execute the query for the current batch
+        ResponseEntity<GraphqlResponse> response = baseService.getResponse(graphQLQuery, modifiedFilters);
+
+        // Serialize the GraphQL response to a string
+        ObjectMapper objectMapper = new ObjectMapper();
+        String graphQLResponse;
+        try {
+            graphQLResponse = objectMapper.writeValueAsString(response.getBody());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        // STEP-7: Call storeDataInTXT for each batch and append the results
+        List<String> headers = extractKeysFromQuery(graphQLQuery, operationName); // Include operation name in headers extraction
+        String result = storeDataInTXT(graphQLResponse, headers, eventTypeMap, loadDto, queryName, currentFilter, writeHeaders);
+        finalResult.append(result);
+
+        // Set writeHeaders to false after the first batch
+        writeHeaders = false;
+    }
+
+    // STEP-8: Return the final accumulated result
+    return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(finalResult.toString().getBytes()).build();
+}
+
+public List<List<String>> createSublistsFromFiltersAndEventTypeMap(Map<String, String> eventTypeMap, Map<String, List<String>> filters) {
+    // Initialize a list to store the sublists
+    List<String> matchedValues = new ArrayList<>();
+
+    // Loop through the eventTypeMap keys and match them with the filters
+    for (String eventKey : eventTypeMap.keySet()) {
+        // Assuming the filters map contains a list of values for each event key
+        List<String> filterValues = filters.get(eventKey);
+
+        if (filterValues != null) {
+            // Add only unique values to the matchedValues list
+            matchedValues.addAll(filterValues.stream().distinct().collect(Collectors.toList()));
+        }
+    }
+
+    // Now that we have the matched and unique values, let's break them into sublists
+    return createSublists(matchedValues, 100);
+}
+
+// Helper function to create sublists
+private List<List<String>> createSublists(List<String> list, int batchSize) {
+    List<List<String>> sublists = new ArrayList<>();
+
+    // Split the list into sublists of the given batch size
+    for (int i = 0; i < list.size(); i += batchSize) {
+        int end = Math.min(i + batchSize, list.size());
+        sublists.add(new ArrayList<>(list.subList(i, end)));
+    }
+
+    return sublists;
+}
