@@ -883,3 +883,13 @@ private List<List<String>> createSublists(List<String> list, int batchSize) {
 /// 1:20 am
 // Extract the key from the filters map (like "party_id")
     String filterKey = filters.keySet().iterator().next();
+//////////////////////////////////////// 3:50 am
+
+// Filter the eventTypeMap for the current sublist
+        Map<String, String> newEventTypeMap = sublist.stream()
+            .filter(eventTypeMap::containsKey)  // Ensure that the eventTypeMap contains the key
+            .collect(Collectors.toMap(
+                key -> key,                      // Key in the sublist
+                eventTypeMap::get                // Corresponding value from eventTypeMap
+            ));
+
