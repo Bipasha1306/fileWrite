@@ -390,3 +390,227 @@ private List<List<String>> createSublists(List<String> list, int batchSize) {
 
     return sublists;
 }
+
+
+/////////////////////////
+Apologies for the confusion! I'll keep the existing logic intact and just add the extra logic for processing in batches and handling headers.
+
+Here’s the complete approach:
+
+### Step-by-Step Plan
+
+1. **Batching Logic**: We’ll split the filters into batches of 100 and call the existing `storeDataInTXT` method for each batch.
+2. **Header Control**: Ensure headers are written only once, during the first batch.
+3. **Accumulate Results**: Collect the results from each batch and return the complete result in the `PandaRunStatusDto`.
+
+Here’s the full integration with the original `PandaRunStatusDto` logic and `storeDataInTXT` method:
+
+### Code Implementation
+
+```java
+@Transactional
+public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessException {
+
+    LoadDto loadDto = null;
+    String graphQLResponse = null; // Insert record into load table
+    loadDto = insertLoad(queryName);
+
+    // STEP-1: Get query from spring cloud config
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+    if (radixQueryProperties.isEmpty()) {
+        throw new BusinessException("Query name is incorrect");
+    }
+    
+    Map<String, String> entityAndFilterColumn = baseService.getEntitiesAndFilterColumnsByQuery(radixQueryProperties);
+
+    // STEP-2: Get filters from the Notification table
+    Map<String, Object> filters = getFilters(entityAndFilterColumn);
+    String currentFilter = getCurrentFilter(entityAndFilterColumn);
+
+    // Get the eventType map from the notification table
+    Map<String, String> eventTypeMap = getEventTypeMap();
+
+    // Return empty values if eventTypeMap is empty
+    if (eventTypeMap.isEmpty()) {
+        updateStatus(loadDto, "SUCCESS");
+        return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(null).build();
+    }
+
+    // STEP-4: Execute the query
+    String graphQLQuery = radixQueryProperties.get().getRadixQuery();
+    Pattern pattern = Pattern.compile("^(\\s*(query|mutation|subscription)\\s+(\\w+).*)", Pattern.DOTALL);
+    Matcher matcher = pattern.matcher(graphQLQuery);
+    String operationName = "";
+
+    if (matcher.find()) {
+        operationName = matcher.group(2);
+    }
+
+    List<String> headers = extractKeysFromQuery(graphQLQuery, operationName);
+
+    // Splitting filters into sublists of 100
+    List<List<String>> filterSublists = createSublists(filters.get(currentFilter), 100);
+
+    // StringBuilder to accumulate the result of all batches
+    StringBuilder finalResult = new StringBuilder();
+
+    boolean writeHeaders = true;  // Ensure headers are written only for the first batch
+
+    for (List<String> subList : filterSublists) {
+        // Prepare filters for the current batch
+        Map<String, Object> subListFilters = new HashMap<>(filters);
+        subListFilters.put(currentFilter, subList);
+
+        // Fetch data for the current batch
+        ResponseEntity<GraphqlResponse> response = baseService.getResponse(graphQLQuery, subListFilters);
+
+        // Convert response to JSON string
+        try {
+            graphQLResponse = new ObjectMapper().writeValueAsString(response.getBody());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Store data for the current batch
+        String result = storeDataInTXT(graphQLResponse, headers, eventTypeMap, loadDto, operationName, currentFilter, writeHeaders);
+
+        // Append the result to finalResult
+        finalResult.append(result);
+
+        // Set writeHeaders to false after the first batch
+        writeHeaders = false;
+    }
+
+    // Return the complete result in PandaRunStatusDto
+    return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(finalResult.toString().getBytes()).build();
+}
+```
+
+### Modified `storeDataInTXT` Method (Adding `writeHeaders` Flag)
+
+```java
+public String storeDataInTXT(String jsonResponse, List<String> keys, Map<String, String> eventTypeMap,
+                             LoadDto loadDto, String queryName, final String currentFilter, boolean writeHeaders) {
+    try (StringWriter stringWriter = new StringWriter()) {
+        // Parse JSON data
+        JSONObject jsonObject = new JSONObject(jsonResponse);
+        JSONArray jsonArray;
+        if (containEdges) {
+            jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+        } else {
+            jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
+        }
+
+        Map<String, Boolean> accountsFound = new HashMap<>();
+
+        // Create a new list for headers
+        List<String> headers = new ArrayList<>(keys);
+        headers.add("eventType");
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(queryName + ".csv", true)); // Open in append mode
+
+        // Only write headers if the flag is true
+        if (writeHeaders) {
+            stringWriter.write(String.join("\t", headers));
+            stringWriter.write("\n");
+            writer.write(String.join(",", headers));
+            writer.newLine();
+        }
+
+        // Iterate over the accounts in the JSON response
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject account = jsonArray.getJSONObject(i);
+            String accountId = null;
+            List<Integer> nestedArrSizes = new ArrayList<>();
+
+            // Get the size of all the nested JSONArray present inside this account
+            for (String key : keys) {
+                String[] nestedKeys = key.split("\\.");
+                String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                Object value = getValue(account, newKeys, null);
+                if (value instanceof JSONArray) {
+                    nestedArrSizes.add(((JSONArray) value).length());
+                }
+            }
+
+            // Maximum size of any nested JSONArray
+            int maxSize = nestedArrSizes.stream()
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(1);
+
+            for (int j = 0; j < maxSize; j++) {
+                int keysIndex = 0;
+                // Write data for the account
+                List<String> values = new ArrayList<>();
+
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                    Object value = getValue(account, newKeys, j);
+                    values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                    // Check if the current key is accountId
+                    if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(currentFilter)) {
+                        accountId = (value != null) ? value.toString() : null;
+                        accountsFound.put(accountId, true);
+                    }
+
+                    // if last iteration of for loop add "insert" or "delete"
+                    if (keysIndex == keys.size() - 1) {
+                        String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+                        values.add("\"" + eventType + "\"");
+                    }
+                    keysIndex++;
+                }
+
+                // Write data to the file and StringWriter
+                stringWriter.write(String.join("\t", values));
+                stringWriter.write("\n");
+
+                writer.write(String.join(",", values));
+                writer.newLine();
+            }
+        }
+
+        // Call addHardDelete to add any necessary hard delete logic
+        addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
+
+        // Close the writer after processing
+        writer.close();
+
+        // Return the result after processing
+        String result = stringWriter.toString();
+        updateStatus(loadDto, "SUCCESS");
+        System.out.println("Data has been written to " + queryName + ".csv");
+
+        // Reset flags and clear the map
+        containEdges = false;
+        eventTypeMap.clear();
+        
+        return result;
+
+    } catch (IOException e) {
+        // Handle exceptions
+        updateStatus(loadDto, "FAILED");
+        return e.getMessage();
+    }
+}
+```
+
+### Explanation:
+
+1. **Batch Processing in `incrementalLoad`**: 
+   - We split the filters into sublists of 100 elements each using the `createSublists` method. 
+   - For each sublist, we call the existing `storeDataInTXT` method to process and store the results.
+   - The headers are written only once, in the first call of `storeDataInTXT`.
+
+2. **Final Result Accumulation**: 
+   - We accumulate all results in a `StringBuilder`, which is then returned in the final `PandaRunStatusDto` object.
+
+3. **Header Control in `storeDataInTXT`**:
+   - We introduced a `writeHeaders` flag that ensures headers are written only once, during the first batch. For subsequent batches, the flag is set to `false`, so headers are not duplicated.
+
+This way, the original logic stays intact, and the additional logic for batching and header control is seamlessly integrated.
+
+Let me know if this works for you!
