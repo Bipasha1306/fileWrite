@@ -715,3 +715,80 @@ private List<List<String>> createSublists(List<String> list, int batchSize) {
     }
     return sublists;
 }
+/////////////////////  -11:34 pm
+@Transactional
+public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessException {
+    LoadDto loadDto = null;
+    String graphQLResponse = null;
+
+    // Insert record into the load table
+    loadDto = insertLoad(queryName);
+
+    // STEP-1: Get query from spring cloud config
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+    if (radixQueryProperties.isEmpty()) {
+        throw new BusinessException("Query name is incorrect");
+    }
+
+    // Get the eventTypeMap from the Notification table
+    Map<String, String> eventTypeMap = getEventTypeMap();
+
+    // Return empty values if eventTypeMap is empty
+    if (eventTypeMap.isEmpty()) {
+        updateStatus(loadDto, "SUCCESS"); // Confirm if this is the right place to update
+        return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(null).build();
+    }
+
+    // STEP-3: Create sublists from eventTypeMap keys
+    List<String> eventTypeKeys = new ArrayList<>(eventTypeMap.keySet());
+    List<List<String>> sublists = createSublists(eventTypeKeys, 100);
+
+    // Process each sublist
+    StringBuilder finalResult = new StringBuilder();
+    boolean writeHeaders = true; // Ensure headers are written only once
+
+    for (List<String> sublist : sublists) {
+        // STEP-4: Execute the query for the current batch
+        ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), sublist);
+
+        String graphQLQuery = radixQueryProperties.get().getRadixQuery();
+
+        // Code to get the operation name from the GraphQL query
+        Pattern pattern = Pattern.compile("^(\\s*(query|mutation|subscription)\\s+(\\w+).*)", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(graphQLQuery);
+        String operationName = "";
+        if (matcher.find()) {
+            operationName = matcher.group(2);
+        }
+
+        List<String> headers = extractKeysFromQuery(graphQLQuery, operationName);
+
+        // Serialize the GraphQL response to a string
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            graphQLResponse = objectMapper.writeValueAsString(response.getBody());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        // STEP-5: Call storeDataInTXT for each batch and append the results
+        String result = storeDataInTXT(graphQLResponse, headers, eventTypeMap, loadDto, operationName, null);
+        finalResult.append(result);
+
+        // Set writeHeaders to false after the first batch
+        writeHeaders = false;
+    }
+
+    // STEP-6: Return the final accumulated result
+    return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(finalResult.toString().getBytes()).build();
+}
+
+// Helper function to create sublists
+private List<List<String>> createSublists(List<String> list, int batchSize) {
+    List<List<String>> sublists = new ArrayList<>();
+    for (int i = 0; i < list.size(); i += batchSize) {
+        int end = Math.min(i + batchSize, list.size());
+        sublists.add(new ArrayList<>(list.subList(i, end)));
+    }
+    return sublists;
+}
