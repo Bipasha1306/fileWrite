@@ -1,0 +1,189 @@
+public String storeDataInTXT(String jsonResponse, List<String> keys, Map<String, String> eventTypeMap,
+                             LoadDto loadDto, String queryName, final String currentFilter, boolean writeHeaders) {
+    try (StringWriter stringWriter = new StringWriter()) {
+        // Parse JSON data
+        JSONObject jsonObject = new JSONObject(jsonResponse);
+        JSONArray jsonArray;
+        if (containEdges) {
+            jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+        } else {
+            jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
+        }
+
+        Map<String, Boolean> accountsFound = new HashMap<>();
+
+        // Create a new list for headers
+        List<String> headers = new ArrayList<>(keys);
+        headers.add("eventType");
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(queryName + ".csv", true)); // Open in append mode
+
+        // Only write headers if the flag is true
+        if (writeHeaders) {
+            stringWriter.write(String.join("\t", headers));
+            stringWriter.write("\n");
+            writer.write(String.join(",", headers));
+            writer.newLine();
+        }
+
+        // Iterate over the accounts in the JSON response
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject account = jsonArray.getJSONObject(i);
+            String accountId = null;
+            List<Integer> nestedArrSizes = new ArrayList<>();
+
+            // Get the size of all the nested JSONArray present inside this account
+            for (String key : keys) {
+                String[] nestedKeys = key.split("\\.");
+                String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                Object value = getValue(account, newKeys, null);
+                if (value instanceof JSONArray) {
+                    nestedArrSizes.add(((JSONArray) value).length());
+                }
+            }
+
+            // Maximum size of any nested JSONArray
+            int maxSize = nestedArrSizes.stream()
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(1);
+
+            for (int j = 0; j < maxSize; j++) {
+                int keysIndex = 0;
+                // Write data for the account
+                List<String> values = new ArrayList<>();
+
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                    Object value = getValue(account, newKeys, j);
+                    values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                    // Check if the current key is accountId
+                    if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(currentFilter)) {
+                        accountId = (value != null) ? value.toString() : null;
+                        accountsFound.put(accountId, true);
+                    }
+
+                    // if last iteration of for loop add "insert" or "delete"
+                    if (keysIndex == keys.size() - 1) {
+                        String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+                        values.add("\"" + eventType + "\"");
+                    }
+                    keysIndex++;
+                }
+
+                // Write data to the file and StringWriter
+                stringWriter.write(String.join("\t", values));
+                stringWriter.write("\n");
+
+                writer.write(String.join(",", values));
+                writer.newLine();
+            }
+        }
+
+        // Call addHardDelete to add any necessary hard delete logic
+        addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
+
+        // Close the writer after processing
+        writer.close();
+
+        // Return the result after processing
+        String result = stringWriter.toString();
+        updateStatus(loadDto, "SUCCESS");
+        System.out.println("Data has been written to " + queryName + ".csv");
+
+        // Print the result
+        System.out.println("Result:\n" + result);
+
+        // Reset flags and clear the map
+        containEdges = false;
+        eventTypeMap.clear();
+        
+        return result;
+
+    } catch (IOException e) {
+        // Handle exceptions
+        updateStatus(loadDto, "FAILED");
+        return e.getMessage();
+    }
+}
+
+///////////////////
+@Service
+public class PandaAccountService {
+
+    @Autowired
+    private BaseService baseService;
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    private final Map<String, String> eventTypemap = new HashMap<>();
+
+    @Transactional
+    public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessException {
+
+        LoadDto loadDto = null;
+        String graphQLResponse = null;
+        loadDto = insertLoad(queryName);
+
+        // STEP-1: Get query from spring cloud config
+        Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+        if(radixQueryProperties.isEmpty()){
+            throw new BusinessException("Query name is incorrect");
+        }
+
+        Map<String, String> entityAndFilterColumn = baseService.getEntitiesAndFilterColumnsByQuery(radixQueryProperties);
+        
+        // STEP-2: Get Filter from Notification table
+        Map<String, Object> filters = getFilters(entityAndFilterColumn);
+
+        // Get the eventType map from the notification table
+        Map<String, String> eventTypeMap = getEventTypeMap();
+        
+        if (eventTypeMap.isEmpty()) {
+            updateStatus(loadDto, "SUCCESS");
+            return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(null).build();
+        }
+
+        // STEP-4: Execute the query in batches
+        String graphQLQuery = radixQueryProperties.get().getRadixQuery();
+        
+        // Create a flag to control header writing
+        boolean writeHeaders = true;
+        StringBuilder resultBuilder = new StringBuilder();
+        
+        List<List<String>> subListFilters = createSublists((List<String>) filters.get(entityAndFilterColumn.get("filterKey")), 100);
+        for (List<String> sublist : subListFilters) {
+            ResponseEntity<GraphqlResponse> response = baseService.getResponse(graphQLQuery, sublist);
+            String graphQLResponseBatch;
+            
+            try {
+                graphQLResponseBatch = new ObjectMapper().writeValueAsString(response.getBody());
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+            
+            // Call the storeDataInTXT method for each batch, passing the flag to control headers
+            String batchResult = storeDataInTXT(graphQLResponseBatch, extractKeysFromQuery(graphQLQuery, ""), eventTypeMap, loadDto, queryName, writeHeaders);
+            resultBuilder.append(batchResult);
+            
+            // After the first batch, headers should no longer be written
+            writeHeaders = false;
+        }
+
+        // Return final result after all batches are processed
+        return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(resultBuilder.toString().getBytes()).build();
+    }
+
+    // Your existing methods here...
+
+    // Batch creation method
+    private List<List<String>> createSublists(List<String> list, int batchSize) {
+        List<List<String>> sublists = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, list.size());
+            sublists.add(new ArrayList<>(list.subList(i, end)));
+        }
+        return sublists;
+    }
