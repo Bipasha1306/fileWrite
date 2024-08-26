@@ -880,3 +880,6 @@ private List<List<String>> createSublists(List<String> list, int batchSize) {
     }
     return sublists;
 }
+/// 1:20 am
+// Extract the key from the filters map (like "party_id")
+    String filterKey = filters.keySet().iterator().next();
