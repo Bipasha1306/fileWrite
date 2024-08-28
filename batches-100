@@ -893,3 +893,437 @@ private List<List<String>> createSublists(List<String> list, int batchSize) {
                 eventTypeMap::get                // Corresponding value from eventTypeMap
             ));
 
+////////////////////////////// 3.17
+@Slf4j
+@Service
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class PandaAccountService {
+
+    final DataChangeAlertRepository dataChangeAlertRepository;
+
+    final Map<String, String> eventTypemap = new LinkedHashMap<>();
+
+    final BaseService baseService;
+
+    final LoadService loadService;
+
+    private boolean containEdges = false;
+
+    public PandaAccountService(DataChangeAlertRepository dataChangeAlertRepository, BaseService baseService,
+            LoadService loadService) {
+        this.dataChangeAlertRepository = dataChangeAlertRepository;
+        this.baseService = baseService;
+        this.loadService = loadService;
+    }
+
+    /**
+     * Recursively gets nested values from a JSON object.
+     *
+     * @param jsonObject The JSON object.
+     * @param keys       The array of keys representing the nested structure.
+     * @param arrayIndex If nested JSONArray is present then use this index to iterate
+     * @return The value obtained from the JSON object.
+     */
+    private static Object getValue(JSONObject jsonObject, String[] keys, Integer arrayIndex) {
+        JSONObject currentObject = jsonObject;
+        for (String key : keys) {
+            if (!currentObject.has(key)) {
+                return null;
+            }
+            Object value = currentObject.get(key);
+            if (value instanceof JSONObject) {
+                currentObject = (JSONObject) value;
+            } else if (value instanceof JSONArray) {
+                // Handle case where key represents an empty array
+                JSONArray jsonArray = (JSONArray) value;
+                if (jsonArray.isEmpty()) {
+                    return null;
+                } else {
+                    // Assuming there's only one object in the array
+                    if (arrayIndex != null){
+                        if(jsonArray.isNull(arrayIndex)) return null;
+                        currentObject = jsonArray.getJSONObject(arrayIndex);
+                    }else{
+                        return jsonArray;
+                    }
+
+                }
+            } else {
+                return value;
+            }
+        }
+        return currentObject;
+    }
+
+    @Transactional
+    public PandaRunStatusDto incrementalLoad(String queryName) throws BusinessException{
+
+        LoadDto loadDto = null;
+        String graphQLResponse = null;
+
+        // Insert record into the load table
+        loadDto = insertLoad(queryName);
+
+        // STEP-1: Get query from spring cloud config
+        Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties = baseService.getRadixQueryProperties(queryName);
+        if (radixQueryProperties.isEmpty()) {
+            throw new BusinessException("Query name is incorrect");
+        }
+
+        Map<String, String> entityAndFilterColumn = baseService.getEntitiesAndFilterColumnsByQuery(radixQueryProperties);
+
+        // STEP-2: Get filters from Notification table
+        Map<String, Object> filters = getFilters(entityAndFilterColumn);
+        // Extract the key from the filters map (like "party_id")
+        String filterKey = filters.keySet().iterator().next();
+        String currentFilter = getCurrentFilter(entityAndFilterColumn); // Utility method
+
+        // Get the eventTypeMap from the Notification table
+        Map<String, String> eventTypeMap = getEventTypeMap();
+
+        // Return empty values if eventTypeMap is empty
+        if (eventTypeMap.isEmpty()) {
+            updateStatus(loadDto, "SUCCESS"); // Confirm if this is the right place to update
+            return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(null).build();
+        }
+
+        // STEP-3: Create sublists from eventTypeMap keys
+        List<String> eventTypeKeys = new ArrayList<>(eventTypeMap.keySet());
+        List<List<String>> sublists = createSublists(eventTypeKeys, 10);
+
+        // Process each sublist
+        StringBuilder finalResult = new StringBuilder();
+        boolean writeHeaders = true; // Ensure headers are written only once
+
+        for (List<String> sublist : sublists) {
+
+            // Filter the eventTypeMap for the current sublist
+            Map<String, String> newEventTypeMap = sublist.stream()
+                    .filter(eventTypeMap::containsKey)  // Ensure that the eventTypeMap contains the key
+                    .collect(Collectors.toMap(
+                            key -> key,                      // Key in the sublist
+                            eventTypeMap::get                // Corresponding value from eventTypeMap
+                    ));
+            // Create modified filters using eventTypeMap for the current sublist
+            Map<String, Object> modifiedFilters = new HashMap<>();
+            modifiedFilters.put(filterKey, sublist);
+            // STEP-4: Execute the query for the current batch
+            ResponseEntity<GraphqlResponse> response = baseService.getResponse(radixQueryProperties.get().getRadixQuery(), modifiedFilters);
+            String graphQLQuery = radixQueryProperties.get().getRadixQuery();
+
+            //code to get the operation name from the graphql query
+            // Regular expression pattern to match the operation name
+            Pattern pattern = Pattern.compile("^\\s*(query|mutation|subscription)\\s+(\\w+).*", Pattern.DOTALL);
+            Matcher matcher = pattern.matcher(graphQLQuery);
+            String operationName ="";
+            if (matcher.find()) {
+                String operationType = matcher.group(1);
+                operationName = matcher.group(2);
+                System.out.println("Operation Type: " + operationType);
+                System.out.println("Operation Name: " + operationName);
+            } else {
+                System.out.println("Operation name not found.");
+            }
+
+            List<String> headers = extractKeysFromQuery(graphQLQuery, operationName);
+
+            // Serialize the GraphQL response to a string
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                graphQLResponse = objectMapper.writeValueAsString(response.getBody());
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
+            // STEP-5: Call storeDataInTXT for each batch and append the results
+            String result = storeDataInTXT(graphQLResponse, headers, newEventTypeMap, loadDto, operationName, currentFilter,writeHeaders);
+            finalResult.append(result);
+
+            // Set writeHeaders to false after the first batch
+            writeHeaders = false;
+        }
+
+        // STEP-6: Return the final accumulated result
+        return PandaRunStatusDto.builder().runId(loadDto.getRunId()).fileContent(finalResult.toString().getBytes()).build();
+    }
+
+    // Helper function to create sublists
+    private List<List<String>> createSublists(List<String> list, int batchSize) {
+        List<List<String>> sublists = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, list.size());
+            sublists.add(new ArrayList<>(list.subList(i, end)));
+        }
+        return sublists;
+    }
+
+    /**
+     * method to map the filter ids colums to correct one
+     * @param filterMap the map of the entity and column name
+     * @return filter
+     */
+    public String getCurrentFilter(Map<String,String> filterMap){
+        StringBuilder filter =  new StringBuilder();
+
+        for(String value : filterMap.values()){
+            if(value.equals("account_id")){
+                filter.append("accountId");
+            }
+            else if (value.equals("party_id")){
+                filter.append("partyId");
+            }
+
+            else {
+                filter.append(value);
+            }
+
+        }
+        return filter.toString();
+    }
+
+    /**
+     * Extracts keys from a GraphQL query.
+     *
+     * @param query The GraphQL query string.
+     * @param queryName The query name to parse.
+     * @return List of keys extracted from the query.
+     */
+    public  List<String> extractKeysFromQuery(String query, String queryName) {
+        List<String> keys = new ArrayList<>();
+        Document document = new Parser().parseDocument(query);
+
+        document.getDefinitions().stream()
+                .filter(definition -> definition instanceof OperationDefinition)
+                .map(definition -> (OperationDefinition) definition)
+                .forEach(operationDefinition -> operationDefinition.getSelectionSet().getSelections().stream()
+                        .filter(selection -> selection instanceof Field)
+                        .map(selection -> (Field) selection)
+                        .forEach(field -> extractKeys(field, "", queryName, keys)));
+
+        return keys;
+    }
+
+    /**
+     * Recursively extracts keys from a GraphQL field.
+     *
+     * @param field  The GraphQL field.
+     * @param prefix The prefix of the nested keys.
+     * @param queryName The query name to parse.
+     * @param keys   The list to store the extracted keys.
+     */
+    private  void extractKeys(Field field, String prefix, String queryName, List<String> keys) {
+        if (field.getName().equals("edges") || field.getName().equals("node")) {
+            containEdges = true;
+        }
+
+        if (field.getSelectionSet() != null) {
+            field.getSelectionSet().getSelections().stream()
+                    .filter(selection -> selection instanceof Field)
+                    .map(selection -> (Field) selection)
+                    .forEach(nestedField -> extractKeys(nestedField, prefix + (prefix.isEmpty() ? "" : ".") + field.getName(), queryName, keys));
+        } else {
+            keys.add(prefix.isEmpty() ? field.getName() : prefix + "." + field.getName());
+        }
+    }
+
+    /**
+     * Processes a JSON response, extracts account information, and writes it to a text file.
+     * It includes logic to handle accounts marked for deletion and ensures that data is written in a tab-separated format.
+     *
+     * @param jsonResponse The JSON response string.
+     * @param keys         The list of keys to extract data from JSON.
+     * @param queryName    The query name to parse.
+     * @param eventTypeMap write the values and header
+     */
+    public String storeDataInTXT(String jsonResponse, List<String> keys, Map<String, String> eventTypeMap,
+            LoadDto loadDto, String queryName, final String currentFilter, boolean writeHeaders) {
+        try (StringWriter stringWriter = new StringWriter()) {
+            // Parse JSON data
+            JSONObject jsonObject = new JSONObject(jsonResponse);
+            JSONArray jsonArray;
+            if (containEdges) {
+                jsonArray = jsonObject.getJSONObject("data").getJSONObject(queryName).getJSONArray("edges");
+            } else {
+                jsonArray = jsonObject.getJSONObject("data").getJSONArray(queryName);
+            }
+            Map<String, Boolean> accountsFound = new HashMap<>();
+
+            // Create a new list for headers
+            List<String> headers = new ArrayList<>(keys);
+            headers.add("eventType");
+            BufferedWriter writer = new BufferedWriter(new FileWriter(queryName + ".csv", true)); // Open in append mode
+            // Only write headers if the flag is true
+            if (writeHeaders) {
+                stringWriter.write(String.join("\t", headers));
+                stringWriter.write("\n");
+                writer.write(String.join(",", headers));
+                writer.newLine();
+            }
+
+
+            // Iterate over the accounts in the JSON response
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject account = jsonArray.getJSONObject(i);
+                String accountId = null;
+                List<Integer> nestedArrSizes = new ArrayList<Integer>();
+
+                // Get the size of all the nested JSONArray present inside this account
+                for (String key : keys) {
+                    String[] nestedKeys = key.split("\\.");
+                    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                    Object value = getValue(account, newKeys, null);
+                    if (value instanceof JSONArray) {
+                        nestedArrSizes.add(((JSONArray) value).length());
+                    }
+                }
+
+                //Maximum size of any nested JSONArray
+                int maxSize = nestedArrSizes.stream()
+                        .mapToInt(Integer::intValue)
+                        .max()
+                        .orElse(1);
+
+                for (int j = 0; j < maxSize; j++) {
+                    int keysIndex = 0;
+                    // Write data for the account
+                    List<String> values = new ArrayList<>();
+
+                    for (String key : keys) {
+                        String[] nestedKeys = key.split("\\.");
+                        String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+                        Object value = getValue(account, newKeys, j);
+                        values.add((value != null && !value.toString().equals("null")) ? "\"" + value.toString() + "\"" : "\"\"");
+
+                        // Check if the current key is accountId
+                        if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(currentFilter)) {
+                            accountId = (value != null) ? value.toString() : null;
+                            accountsFound.put(accountId, true);
+                        }
+
+                        //if last iteration of for loop add "insert" or "delete"
+                        if (keysIndex == keys.size() - 1) {
+                            String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+                            values.add("\"" + eventType + "\"");
+                        }
+                        keysIndex++;
+                    }
+                    // Print values
+                    System.out.println(String.join("\t", values));
+                    stringWriter.write(String.join("\t", values));
+                    stringWriter.write("\n");
+
+                    writer.write(String.join(",", values));
+                    writer.newLine();
+                }
+            }
+            addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
+            stringWriter.close();
+            writer.close();
+            String result = stringWriter.toString();
+            updateStatus(loadDto, "SUCCESS");
+            System.out.println("Data has been written to " +queryName+ ".csv");
+            // Print the result
+            System.out.println("Result:\n" + result);
+            containEdges = false;
+            eventTypeMap.clear();
+            return result;
+        } catch (IOException e) {
+            updateStatus(loadDto, "FAILED");
+            return e.getMessage();
+        }
+    }
+
+    /**
+     * Adds "Hard Delete" entries to the result if the accountId is present in the eventTypeMap but not found in the JSON response.
+     * If an accountId is marked for deletion but not found in the JSON response, it writes a "Hard Delete" entry to the provided StringWriter.
+     *
+     * @param stringWriter   The StringWriter to append the "Hard Delete" entries to the CSV.
+     * @param keys           The list of keys corresponding to the JSON structure, used to determine the number of columns.
+     * @param eventTypeMap   A map containing account IDs as keys and their event types (e.g., "Insert", "Delete") as values.
+     * @param accountsFound  A map tracking account IDs that are already found in the JSON response. The keys are account IDs, and values are booleans indicating whether the account is found.
+     */
+    private  void addHardDelete(StringWriter stringWriter, List<String> keys, Map<String, String> eventTypeMap, Map<String, Boolean> accountsFound) {
+        for (String accountId : eventTypeMap.keySet()) {
+            if (eventTypeMap.get(accountId).equals("DELETE")) {
+                boolean accountFound = accountsFound.containsKey(accountId);
+
+                // If the account ID is not found, write a "Hard Delete" entry
+                if (!accountFound) {
+                    String[] hardDeleteValues = new String[keys.size() + 1];
+                    Arrays.fill(hardDeleteValues, "\"\"");
+                    hardDeleteValues[0] = "\"" + accountId + "\"";
+                    hardDeleteValues[hardDeleteValues.length - 1] = "\"Hard Delete\"";
+                    stringWriter.write(String.join("\t", hardDeleteValues));
+                    stringWriter.write("\n");
+                }
+            }
+        }
+    }
+
+    //Discussed with team to insert proper value in the Load table
+    public LoadDto insertLoad(String queryName) {
+        LoadEntity loadEntity = LoadEntity.builder().runId(CommonUtil.createUUID()).loadCd(queryName)
+                .loadId(1235L) // event-Id from the kafka alert - this change is required
+                .type(DataLoadTypes.PANDA_ALERTS).transformingStatus(DataLoadTransformingStatuses.WAITING)
+                .fromDt(new Date()).toDt(new Date()).build();
+        return loadService.insertLoad(loadEntity);
+    }
+
+    // Original method remains unchanged
+    public Map<String, Object> getFilters(Map<String, String> entityAndFilterColumn) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        entityAndFilterColumn.forEach((key, value) -> {
+            log.info(" key ---------------------------------" + key);
+            List<DataChangeAlertEntity> notificationDetailsList = dataChangeAlertRepository.findAllByIsProcessedAndSourceSystemAndEntityName(
+                    "N", "panda", key);
+            List<String> filters = new ArrayList<>();
+
+            for (DataChangeAlertEntity notificationDetails : notificationDetailsList) {
+                try {
+                    if ("N".equals(notificationDetails.getIsProcessed())) {
+                        processNotificationDetails(notificationDetails, value, filters);
+                    } else if ("Y".equals(notificationDetails.getIsProcessed())) {
+                        // Log a message when isProcessed is "Y"
+                        log.info("Skipping processing for DataChangeAlertEntity with isProcessed = Y");
+                        // Skip to the next iteration
+                    }
+                } catch (JsonProcessingException e) {
+                    // Log the exception without throwing it
+                    log.error("Error processing DataChangeAlertEntity", e);
+                }
+            }
+
+            result.put(value, filters);
+        });
+
+        return result;
+    }
+
+    // New method to retrieve eventTypeMap
+    public Map<String, String> getEventTypeMap() {
+        return eventTypemap;
+    }
+
+
+    private void processNotificationDetails(DataChangeAlertEntity dataChangeAlertEntity, String value, List<String> filters)
+            throws JsonProcessingException {
+        dataChangeAlertEntity.getKeysAsMap().forEach((key2, value2) -> {
+            if (value.equals(key2)) {
+                eventTypemap.put(value2, dataChangeAlertEntity.getEventType());
+                filters.add(value2);
+            }
+        });
+    }
+
+    public void updateStatus(LoadDto loadDto, String status) {
+        LoadEntity loadEntity = loadService.getByRunId(loadDto.getRunId());
+        if (status.equals("SUCCESS"))
+            loadEntity.setTransformingStatus(DataLoadTransformingStatuses.COMPLETED);
+        else {
+            loadEntity.setTransformingStatus(DataLoadTransformingStatuses.INTERRUPTED);
+        }
+        log.info("runId : " + loadEntity.getRunId() + " transformingStatus: " + loadEntity.getTransformingStatus()
+                + "\n");
+
+    }
+}
