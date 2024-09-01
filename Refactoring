@@ -1,0 +1,14 @@
+GraphQLProcessingService
+Responsibility: Handles operations related to GraphQL query execution and response processing.
+Methods to Move:
+extractKeysFromQuery
+extractKeys
+storeDataInTXT (consider renaming to something like processGraphQLResponse)
+addHardDelete
+getValue (could be used for JSON processing within GraphQL responses)
+3. NotificationService
+Responsibility: Manages operations related to retrieving and processing notifications from the DataChangeAlertRepository.
+Methods to Move:
+getFilters
+getEventTypeMap
+processNotificationDetails
