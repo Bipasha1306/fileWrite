@@ -1,47 +1,7 @@
-The YAML configuration file you've provided seems to map to your `DataAlertRadixConfigProperties` class. Here's how you can ensure that the properties are correctly read into your Spring application:
+To modify your existing configuration class, service interface, and implementation to handle the nested YAML structure, you can follow these steps:
 
-### YAML File Structure
-
-Your YAML file appears to have the following structure:
-
-```yaml
-data-change-alert:
-  radix:
-    radix-services:
-      - radix-service-url: https://panda-datagraph.test.gaiacloud.jpmchase.net/graphql
-        queries:
-          - query-name: getPartyHierarchyByIds
-            radix-query: |
-              {
-                partyHierarchyByIds (idParty: [123]) {
-                  idParty
-                  idCtrlParty
-                  idPurpHrcyParty
-                  idTypHrcyParty
-                }
-              }
-            entities:
-              - name: PartyHierarchy
-                filter-columns:
-                  - idParty
-      - radix-service-url: https://corp-ref-radix.test.gaiacloud.jpmchase.net/graphql
-        queries:
-          # More queries here...
-```
-
-### Java Class Mapping
-
-To correctly map this YAML structure to your `DataAlertRadixConfigProperties` class, you need to ensure the following:
-
-1. **Class Structure**: Your `DataAlertRadixConfigProperties` class should match the structure of the YAML file. From your provided code and the YAML, this already looks correct.
-
-2. **Configuration Properties Binding**: You have correctly annotated your `DataAlertRadixConfigProperties` class with `@ConfigurationProperties(prefix = "data-change-alert.radix")`, so Spring will try to map the YAML properties under `data-change-alert.radix` to this class.
-
-3. **Spring Boot Application Class**: Ensure that your main application class is properly set up to read these configuration properties.
-
-### Adjustments in Java Code
-
-Given the YAML file, here is what the class should look like:
+### 1. Update the Configuration Class
+You need to modify the `PandaDataRadixConfigProperties` class to handle the nested `radix-services` structure.
 
 ```java
 @ConfigurationProperties(prefix = "data-change-alert.radix")
@@ -49,13 +9,12 @@ Given the YAML file, here is what the class should look like:
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Getter
 @Setter
-public class DataAlertRadixConfigProperties {
-
-    List<ServiceProperties> radixServices;
+public class PandaDataRadixConfigProperties {
+    List<RadixServiceProperties> radixServices;
 
     @Getter
     @Setter
-    public static class ServiceProperties {
+    public static class RadixServiceProperties {
         String radixServiceUrl;
         List<RadixQueryProperties> queries;
     }
@@ -66,90 +25,103 @@ public class DataAlertRadixConfigProperties {
         String queryName;
         String radixQuery;
         List<RadixEntityProperties> entities;
+        String targetTable;
+    }
 
-        @Getter
-        @Setter
-        public static class RadixEntityProperties {
-            String name;
-            List<String> filterColumns;
-        }
+    @Getter
+    @Setter
+    public static class RadixEntityProperties {
+        String name;
+        List<String> filterColumns;
     }
 }
 ```
 
-### Injection in `BaseServiceImpl`
-
-To use these properties, ensure your `BaseServiceImpl` class is updated to inject `DataAlertRadixConfigProperties`:
+### 2. Modify the Service Interface
+Update the `BaseService` interface to accommodate the changes required for handling multiple `radix-services`.
 
 ```java
+@Service
+public interface BaseService {
+
+    ResponseEntity<GraphqlResponse> getResponse(String query, Map<String, Object> filters, String serviceUrl);
+
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> getRadixQueryProperties(String queryName);
+
+    Map<String, String> getEntitiesAndFilterColumnsByQuery(Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties);
+
+    String getConvertedDate(String inputDate);
+}
+```
+
+### 3. Update the Implementation Class
+Now, modify the `BaseServiceImpl` class to handle multiple `radix-services`:
+
+```java
+@Slf4j
 @Service
 public class BaseServiceImpl implements BaseService {
 
     private final GraphqlClient graphqlClient;
-    private final DataAlertRadixConfigProperties dataAlertRadixConfigProperties;
+    private final PandaDataRadixConfigProperties pandaDataRadixConfigProperties;
+
+    @Qualifier("radixRestTemplate")
     private final RestTemplate restTemplate;
 
-    @Autowired
-    public BaseServiceImpl(GraphqlClient graphqlClient,
-                           DataAlertRadixConfigProperties dataAlertRadixConfigProperties,
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MMM-yy");
+
+    public BaseServiceImpl(GraphqlClient graphqlClient, PandaDataRadixConfigProperties pandaDataRadixConfigProperties,
                            @Qualifier("radixRestTemplate") RestTemplate restTemplate) {
         this.graphqlClient = graphqlClient;
-        this.dataAlertRadixConfigProperties = dataAlertRadixConfigProperties;
+        this.pandaDataRadixConfigProperties = pandaDataRadixConfigProperties;
         this.restTemplate = restTemplate;
     }
 
     @Override
-    public Optional<DataAlertRadixConfigProperties.RadixQueryProperties> getRadixQueryProperties(String queryName) {
-        return dataAlertRadixConfigProperties.getRadixServices().stream()
-            .flatMap(service -> service.getQueries().stream())
-            .filter(radixQueryProperties -> radixQueryProperties.getQueryName().equals(queryName))
-            .findFirst();
+    public ResponseEntity<GraphqlResponse> getResponse(String query, Map<String, Object> filters, String serviceUrl) {
+        return graphqlClient.sendWithTryCount(restTemplate, query, filters,
+                                              serviceUrl,
+                                              2, GraphqlResponse.class);
     }
 
     @Override
-    public Map<String, String> getEntitiesAndFilterColumnsByQuery(
-        Optional<DataAlertRadixConfigProperties.RadixQueryProperties> radixQueryProperties) {
+    public Optional<PandaDataRadixConfigProperties.RadixQueryProperties> getRadixQueryProperties(String queryName) {
+        return pandaDataRadixConfigProperties.getRadixServices().stream()
+                 .flatMap(service -> service.getQueries().stream())
+                 .filter(radixQueryProperties -> radixQueryProperties.getQueryName().equals(queryName))
+                 .findFirst();
+    }
 
+    @Override
+    public Map<String, String> getEntitiesAndFilterColumnsByQuery(Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties) {
         return radixQueryProperties
-            .map(radixQueryProperties1 -> radixQueryProperties1.getEntities().stream()
-                .collect(Collectors.toMap(
-                    DataAlertRadixConfigProperties.RadixQueryProperties.RadixEntityProperties::getName,
-                    radixEntityProperties -> radixEntityProperties.getFilterColumns().get(0))
-                )
-            ).orElse(new LinkedHashMap<>());
+                 .map(radixQueryProperties1 -> 
+                      radixQueryProperties1.getEntities().stream()
+                                           .collect(Collectors.toMap(
+                                                PandaDataRadixConfigProperties.RadixEntityProperties::getName,
+                                                radixEntityProperties -> radixEntityProperties.getFilterColumns().get(0))))
+                 .orElse(new LinkedHashMap<>());
+    }
+
+    @Override
+    public String getConvertedDate(String inputDate) {
+        try {
+            if (inputDate.isEmpty()) {
+                return LocalDate.now().format(DATE_FORMATTER);
+            }
+            LocalDate localDate = LocalDate.parse(inputDate);
+            return localDate.format(DATE_FORMATTER);
+        } catch (DateTimeParseException e) {
+            log.info("Error parsing date: " + inputDate);
+            return "Invalid Date!";
+        }
     }
 }
 ```
 
-### Key Points:
+### Key Changes:
+- **Configuration Class**: Introduced a new `RadixServiceProperties` class to represent each `radix-service`, and adjusted the structure to support multiple services.
+- **Service Interface**: Added an extra parameter `serviceUrl` to the `getResponse` method to dynamically handle the service URL.
+- **Implementation Class**: Updated the logic to process the list of `radix-services` and extract relevant query details.
 
-- **Prefix Matching**: Ensure the `@ConfigurationProperties` prefix (`"data-change-alert.radix"`) matches the structure in the YAML file.
-  
-- **Injection**: The `dataAlertRadixConfigProperties` object should now correctly read and inject all properties from your YAML file.
-
-After these adjustments, your application should be able to correctly map the YAML properties to the `DataAlertRadixConfigProperties` class and inject them where needed.
-
-
-///////// 5:06 pm
-
-@Override
-public ResponseEntity<GraphqlResponse> getResponse(String query, Map<String, Object> filters) {
-    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryPropertiesOpt = getRadixQueryProperties(query);
-
-    if (radixQueryPropertiesOpt.isPresent()) {
-        PandaDataRadixConfigProperties.RadixServiceProperties serviceProperties = findRadixServiceByQuery(radixQueryPropertiesOpt.get());
-        if (serviceProperties != null) {
-            return graphqlClient.sendWithTryCount(restTemplate, query, filters,
-                                                  serviceProperties.getRadixServiceUrl(),
-                                                  2, GraphqlResponse.class);
-        }
-    }
-    return ResponseEntity.badRequest().build();
-}
-
-private PandaDataRadixConfigProperties.RadixServiceProperties findRadixServiceByQuery(PandaDataRadixConfigProperties.RadixQueryProperties queryProperties) {
-    return pandaDataRadixConfigProperties.getRadixServices().stream()
-             .filter(service -> service.getQueries().contains(queryProperties))
-             .findFirst()
-             .orElse(null);
-}
+This approach allows you to handle the new nested structure while preserving the existing logic.
