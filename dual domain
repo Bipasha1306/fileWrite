@@ -125,3 +125,39 @@ public class BaseServiceImpl implements BaseService {
 - **Implementation Class**: Updated the logic to process the list of `radix-services` and extract relevant query details.
 
 This approach allows you to handle the new nested structure while preserving the existing logic.
+
+
+/////////////////// 5:53 pm 
+Here’s how you can implement the `findServiceUrlByQuery` method to determine the service URL based on the query:
+
+### Implementation of `findServiceUrlByQuery`
+
+```java
+private String findServiceUrlByQuery(String query) {
+    return pandaDataRadixConfigProperties.getRadixServices().stream()
+        .filter(service -> service.getQueries().stream()
+            .anyMatch(radixQueryProperties -> radixQueryProperties.getRadixQuery().equals(query)))
+        .map(PandaDataRadixConfigProperties.RadixServiceProperties::getRadixServiceUrl)
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Service URL not found for the given query."));
+}
+```
+
+### Explanation:
+- **Stream and Filter**: The method iterates through the list of `RadixServiceProperties` to find a service that contains the query.
+- **Mapping**: Once the correct service is identified, it extracts the `radixServiceUrl` using the `map` function.
+- **Exception Handling**: If no matching service is found, it throws an `IllegalArgumentException` to indicate that the service URL could not be determined for the provided query.
+
+### Usage in `getResponse`
+
+You can then use this method in the `getResponse` method as follows:
+
+```java
+@Override
+public ResponseEntity<GraphqlResponse> getResponse(String query, Map<String, Object> filters) {
+    String serviceUrl = findServiceUrlByQuery(query);
+    return graphqlClient.sendWithTryCount(restTemplate, query, filters, serviceUrl, 2, GraphqlResponse.class);
+}
+```
+
+This approach keeps the logic clean and separates the concern of determining the service URL from the main method.
