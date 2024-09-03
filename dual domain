@@ -1,0 +1,130 @@
+The YAML configuration file you've provided seems to map to your `DataAlertRadixConfigProperties` class. Here's how you can ensure that the properties are correctly read into your Spring application:
+
+### YAML File Structure
+
+Your YAML file appears to have the following structure:
+
+```yaml
+data-change-alert:
+  radix:
+    radix-services:
+      - radix-service-url: https://panda-datagraph.test.gaiacloud.jpmchase.net/graphql
+        queries:
+          - query-name: getPartyHierarchyByIds
+            radix-query: |
+              {
+                partyHierarchyByIds (idParty: [123]) {
+                  idParty
+                  idCtrlParty
+                  idPurpHrcyParty
+                  idTypHrcyParty
+                }
+              }
+            entities:
+              - name: PartyHierarchy
+                filter-columns:
+                  - idParty
+      - radix-service-url: https://corp-ref-radix.test.gaiacloud.jpmchase.net/graphql
+        queries:
+          # More queries here...
+```
+
+### Java Class Mapping
+
+To correctly map this YAML structure to your `DataAlertRadixConfigProperties` class, you need to ensure the following:
+
+1. **Class Structure**: Your `DataAlertRadixConfigProperties` class should match the structure of the YAML file. From your provided code and the YAML, this already looks correct.
+
+2. **Configuration Properties Binding**: You have correctly annotated your `DataAlertRadixConfigProperties` class with `@ConfigurationProperties(prefix = "data-change-alert.radix")`, so Spring will try to map the YAML properties under `data-change-alert.radix` to this class.
+
+3. **Spring Boot Application Class**: Ensure that your main application class is properly set up to read these configuration properties.
+
+### Adjustments in Java Code
+
+Given the YAML file, here is what the class should look like:
+
+```java
+@ConfigurationProperties(prefix = "data-change-alert.radix")
+@Configuration
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@Getter
+@Setter
+public class DataAlertRadixConfigProperties {
+
+    List<ServiceProperties> radixServices;
+
+    @Getter
+    @Setter
+    public static class ServiceProperties {
+        String radixServiceUrl;
+        List<RadixQueryProperties> queries;
+    }
+
+    @Getter
+    @Setter
+    public static class RadixQueryProperties {
+        String queryName;
+        String radixQuery;
+        List<RadixEntityProperties> entities;
+
+        @Getter
+        @Setter
+        public static class RadixEntityProperties {
+            String name;
+            List<String> filterColumns;
+        }
+    }
+}
+```
+
+### Injection in `BaseServiceImpl`
+
+To use these properties, ensure your `BaseServiceImpl` class is updated to inject `DataAlertRadixConfigProperties`:
+
+```java
+@Service
+public class BaseServiceImpl implements BaseService {
+
+    private final GraphqlClient graphqlClient;
+    private final DataAlertRadixConfigProperties dataAlertRadixConfigProperties;
+    private final RestTemplate restTemplate;
+
+    @Autowired
+    public BaseServiceImpl(GraphqlClient graphqlClient,
+                           DataAlertRadixConfigProperties dataAlertRadixConfigProperties,
+                           @Qualifier("radixRestTemplate") RestTemplate restTemplate) {
+        this.graphqlClient = graphqlClient;
+        this.dataAlertRadixConfigProperties = dataAlertRadixConfigProperties;
+        this.restTemplate = restTemplate;
+    }
+
+    @Override
+    public Optional<DataAlertRadixConfigProperties.RadixQueryProperties> getRadixQueryProperties(String queryName) {
+        return dataAlertRadixConfigProperties.getRadixServices().stream()
+            .flatMap(service -> service.getQueries().stream())
+            .filter(radixQueryProperties -> radixQueryProperties.getQueryName().equals(queryName))
+            .findFirst();
+    }
+
+    @Override
+    public Map<String, String> getEntitiesAndFilterColumnsByQuery(
+        Optional<DataAlertRadixConfigProperties.RadixQueryProperties> radixQueryProperties) {
+
+        return radixQueryProperties
+            .map(radixQueryProperties1 -> radixQueryProperties1.getEntities().stream()
+                .collect(Collectors.toMap(
+                    DataAlertRadixConfigProperties.RadixQueryProperties.RadixEntityProperties::getName,
+                    radixEntityProperties -> radixEntityProperties.getFilterColumns().get(0))
+                )
+            ).orElse(new LinkedHashMap<>());
+    }
+}
+```
+
+### Key Points:
+
+- **Prefix Matching**: Ensure the `@ConfigurationProperties` prefix (`"data-change-alert.radix"`) matches the structure in the YAML file.
+  
+- **Injection**: The `dataAlertRadixConfigProperties` object should now correctly read and inject all properties from your YAML file.
+
+After these adjustments, your application should be able to correctly map the YAML properties to the `DataAlertRadixConfigProperties` class and inject them where needed.
