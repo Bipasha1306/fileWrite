@@ -128,3 +128,28 @@ public class BaseServiceImpl implements BaseService {
 - **Injection**: The `dataAlertRadixConfigProperties` object should now correctly read and inject all properties from your YAML file.
 
 After these adjustments, your application should be able to correctly map the YAML properties to the `DataAlertRadixConfigProperties` class and inject them where needed.
+
+
+///////// 5:06 pm
+
+@Override
+public ResponseEntity<GraphqlResponse> getResponse(String query, Map<String, Object> filters) {
+    Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryPropertiesOpt = getRadixQueryProperties(query);
+
+    if (radixQueryPropertiesOpt.isPresent()) {
+        PandaDataRadixConfigProperties.RadixServiceProperties serviceProperties = findRadixServiceByQuery(radixQueryPropertiesOpt.get());
+        if (serviceProperties != null) {
+            return graphqlClient.sendWithTryCount(restTemplate, query, filters,
+                                                  serviceProperties.getRadixServiceUrl(),
+                                                  2, GraphqlResponse.class);
+        }
+    }
+    return ResponseEntity.badRequest().build();
+}
+
+private PandaDataRadixConfigProperties.RadixServiceProperties findRadixServiceByQuery(PandaDataRadixConfigProperties.RadixQueryProperties queryProperties) {
+    return pandaDataRadixConfigProperties.getRadixServices().stream()
+             .filter(service -> service.getQueries().contains(queryProperties))
+             .findFirst()
+             .orElse(null);
+}
