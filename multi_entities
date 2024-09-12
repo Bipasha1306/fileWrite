@@ -67,3 +67,13 @@ public String toCamelCase(String filter) {
                   .matcher(filter)
                   .replaceAll(m -> m.group(1).toUpperCase());
 }
+//////4:15
+private String sanitizeValue(String value) {
+    if (value == null) {
+        return "\"\"";
+    }
+    // Remove all newline characters (both \r and \n) and escape double quotes
+    String sanitized = value.replaceAll("[\r\n]+", " "); // Remove newlines, replace with a single space
+    return "\"" + sanitized.replace("\"", "\"\"") + "\"";
+}
+
