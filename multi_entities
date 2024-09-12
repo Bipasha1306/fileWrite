@@ -76,4 +76,26 @@ private String sanitizeValue(String value) {
     String sanitized = value.replaceAll("[\r\n]+", " "); // Remove newlines, replace with a single space
     return "\"" + sanitized.replace("\"", "\"\"") + "\"";
 }
+----------
+for (String key : keys) {
+    String[] nestedKeys = key.split("\\.");
+    String[] newKeys = Arrays.copyOfRange(nestedKeys, containEdges ? 2 : 1, nestedKeys.length);
+    Object value = getValue(account, newKeys, j);
+    
+    // Sanitize the value before adding it to the list
+    values.add(sanitizeValue(value != null ? value.toString() : null));
+
+    // Check if the current key is accountId
+    if (accountId == null && nestedKeys != null && nestedKeys.length > 0 && nestedKeys[nestedKeys.length - 1].equals(currentFilter)) {
+        accountId = (value != null) ? value.toString() : null;
+        accountsFound.put(accountId, true);
+    }
+
+    // If it's the last iteration of the loop, add "insert" or "delete"
+    if (keysIndex == keys.size() - 1) {
+        String eventType = (accountId != null) ? (String) eventTypeMap.getOrDefault(accountId, "") : "";
+        values.add(sanitizeValue(eventType));
+    }
+    keysIndex++;
+}
 
