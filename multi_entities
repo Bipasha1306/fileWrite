@@ -57,3 +57,13 @@ public String toCamelCase(String filter) {
     return matcher.replaceAll(m -> m.group(1).toUpperCase());
 }
 
+////// 3.50
+
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
+public String toCamelCase(String filter) {
+    return Pattern.compile("_(.)")
+                  .matcher(filter)
+                  .replaceAll(m -> m.group(1).toUpperCase());
+}
