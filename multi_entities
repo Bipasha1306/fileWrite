@@ -46,4 +46,14 @@ public Map<String, Object> getFilters(Map<String, String> entityAndFilterColumn)
 public String toCamelCase(String filter) {
     return filter.replaceAll("_(.)", m -> m.group(1).toUpperCase());
 }
+////
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public String toCamelCase(String filter) {
+    Pattern pattern = Pattern.compile("_(.)");
+    Matcher matcher = pattern.matcher(filter);
+    
+    return matcher.replaceAll(m -> m.group(1).toUpperCase());
+}
 
