@@ -99,3 +99,11 @@ for (String key : keys) {
     keysIndex++;
 }
 
+///////// 4:35
+private String sanitizeValue(String value) {
+    if (value == null) {
+        return ""; // Return an empty string for null values
+    }
+    // Remove all newline characters (both \r and \n)
+    return value.replaceAll("[\r\n]+", " "); // Replace newlines with a single space
+}
