@@ -11,3 +11,32 @@ public Map<String, String> getEntitiesAndFilterColumnsByQuery(Optional<PandaData
                                  )))
              .orElse(new LinkedHashMap<>());
 }
+/////////////////- 2:49
+public Map<String, Object> getFilters(Map<String, String> entityAndFilterColumn) {
+    Map<String, Object> result = new LinkedHashMap<>();
+    
+    entityAndFilterColumn.forEach((entityName, filterColumn) -> {
+        log.info("Processing entity: " + entityName + " with filter column: " + filterColumn);
+
+        List<NotificationDetails> notificationDetailsList = notificationRepository.findAllByIsProcessedAndSourceSystemAndEntityName(
+            "N", "panda", entityName);
+        
+        // Initialize or retrieve the existing list from the result map
+        List<String> filters = (List<String>) result.computeIfAbsent(filterColumn, k -> new ArrayList<>());
+        
+        // Process notification details and add to the filters list
+        for (NotificationDetails notificationDetails : notificationDetailsList) {
+            try {
+                if ("N".equals(notificationDetails.getIsProcessed())) {
+                    processNotificationDetails(notificationDetails, filterColumn, filters);
+                } else if ("Y".equals(notificationDetails.getIsProcessed())) {
+                    log.info("Skipping processing for NotificationDetails with isProcessed = Y");
+                }
+            } catch (JsonProcessingException e) {
+                log.error("Error processing NotificationDetails", e);
+            }
+        }
+    });
+
+    return result;
+}
