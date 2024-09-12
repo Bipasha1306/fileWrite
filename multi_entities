@@ -1,66 +1,13 @@
-If you want to modify the YAML structure to combine `Party` and `PartyHierarchy` into a single entity and keep the filter column (`idParty`) shared between them, you will need to make some adjustments in both the YAML and the Java code.
-
-### 1. YAML Structure
-Here’s the modified YAML where both `Party` and `PartyHierarchy` are combined under a single `entities` entry:
-
-```yaml
-data-change-alert:
-  radix:
-    radix-services:
-      - radix-service-url: https://panda-datagraph.test.gaiacloud.jpmchase.net/graphql
-        queries:
-          - query-name: getPartyHierarchyByIds
-            radix-query: |
-              {
-                partyHierarchyByIds (idParty: [123]) {
-                  idParty
-                  idCtrlParty
-                  idPurpHrcyParty
-                  idTypHrcyParty
-                }
-              }
-            entities:
-              - name: Party, PartyHierarchy  # Combined entity names
-                filter-columns:
-                  - idParty                 # Shared filter column
-```
-
-### 2. Changes in Java Code
-In the Java code, you need to handle the case where multiple entity names are stored in a single entry under `name`.
-
-#### a. Modify `RadixEntityProperties` Class
-You need to modify the `name` field to allow multiple names, which can be done by using a `List<String>` instead of a `String`.
-
-```java
-@Getter
-@Setter
-public static class RadixEntityProperties {
-    List<String> name; // Allow multiple names for entities
-    List<String> filterColumns;
-}
-```
-
-#### b. Update `getEntitiesAndFilterColumnsByQuery` Method
-The logic in `getEntitiesAndFilterColumnsByQuery` needs to account for multiple entity names in a single entry:
-
-```java
 @Override
 public Map<String, String> getEntitiesAndFilterColumnsByQuery(Optional<PandaDataRadixConfigProperties.RadixQueryProperties> radixQueryProperties) {
     return radixQueryProperties
-             .map(radixQueryProperties1 -> 
-                  radixQueryProperties1.getEntities().stream()
-                                       .flatMap(entity -> entity.getName().stream() // Flatten entity names into a stream
-                                           .map(name -> Map.entry(name, entity.getFilterColumns().get(0)))) // Map each name to its filter column
-                                       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-             )
+             .map(radixQueryProps -> 
+                  radixQueryProps.getEntities().stream()
+                                 .flatMap(entity -> entity.getName().stream()
+                                     .map(name -> new AbstractMap.SimpleEntry<>(name, entity.getFilterColumns().get(0)))) // Create a new entry
+                                 .collect(Collectors.toMap(
+                                     entry -> entry.getKey(),  // Use lambda instead of method reference
+                                     entry -> entry.getValue() // Use lambda instead of method reference
+                                 )))
              .orElse(new LinkedHashMap<>());
 }
-```
-
-### Explanation:
-1. **YAML**: `Party, PartyHierarchy` are combined into a single `entities` entry with the shared `idParty` filter column.
-2. **Java Changes**:
-   - **RadixEntityProperties**: The `name` field is changed from `String` to `List<String>` to allow multiple entity names.
-   - **getEntitiesAndFilterColumnsByQuery**: This method is updated to process multiple entity names in a single entry, mapping each name to the corresponding filter column.
-
-With these changes, the Java code will correctly handle the YAML structure where multiple entities are listed together under the same `entities` entry, sharing a filter column.
