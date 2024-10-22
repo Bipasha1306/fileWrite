@@ -32,4 +32,79 @@ for (DataChangeAlertEntity notificationDetails : notificationDetailsList) {
         log.error("Error processing NotificationDetails", e);
     }
 }
+////////////
 
+@Transactional
+public DataChangeAlertLoadDto incrementalLoad(String queryName) throws BusinessException {
+    LoadDto loadDto = insertLoad(queryName);
+
+    Optional<DataChangeAlertRadixProperties.RadixQueryProperties> radixQueryProperties =
+            dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName);
+    
+    if (radixQueryProperties.isEmpty()) {
+        throw new BusinessException("Query name is incorrect");
+    }
+
+    Map<String, String> entityAndFilterColumn =
+            dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(radixQueryProperties.get());
+    Map<String, Object> filters = getFilters(entityAndFilterColumn);
+    
+    String filterKey = filters.keySet().iterator().next();
+    String currentFilter = toCamelCase(filterKey);
+
+    Map<String, String> eventTypeMap = getEventTypeMap();
+    if (eventTypeMap.isEmpty()) {
+        loadService.updateTransformingStatusByRunId(
+                loadDto.getRunId(), DataLoadTransformingStatuses.COMPLETED);
+        return DataChangeAlertLoadDto.builder()
+                .runId(loadDto.getRunId())
+                .fileContent(null)
+                .build();
+    }
+
+    List<String> eventTypeKeys = new ArrayList<>(eventTypeMap.keySet());
+    List<List<String>> sublists = createSubLists(eventTypeKeys, batchsize);
+    StringBuilder finalResult = new StringBuilder();
+    boolean writeHeaders = true;
+
+    for (List<String> sublist : sublists) {
+        log.info("Processing total sublists: {}", sublists.size());
+
+        Map<String, String> newEventTypeMap = sublist.stream()
+                .filter(eventTypeMap::containsKey)
+                .collect(Collectors.toMap(key -> key, eventTypeMap::get));
+
+        Map<String, Object> modifiedFilters = new HashMap<>();
+        modifiedFilters.put(filterKey, sublist);
+
+        ResponseEntity<GraphqlResponse> response = dataChangeAlertBaseServiceImpl.getRadixResponse(
+                radixQueryProperties.get().getRadixQuery(), modifiedFilters);
+
+        String graphQLQuery = radixQueryProperties.get().getRadixQuery();
+        String operationName = extractOperationName(graphQLQuery);
+        List<String> headers = extractKeysFromQuery(graphQLQuery, operationName);
+
+        log.info("Processing batch of index: {}", sublists.indexOf(sublist));
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String graphQLResponse;
+        try {
+            graphQLResponse = objectMapper.writeValueAsString(response.getBody());
+        } catch (JsonProcessingException e) {
+            throw new BusinessException("Error while processing graphQLResponse: " + e.getMessage());
+        }
+
+        String result = storeDataInTXT(
+                graphQLResponse, headers, newEventTypeMap, loadDto, operationName, currentFilter, writeHeaders);
+        finalResult.append(result);
+        writeHeaders = false;
+
+        log.info("Processed batch of index: {}", sublists.indexOf(sublist));
+        eventTypeMap.clear();
+    }
+
+    return DataChangeAlertLoadDto.builder()
+            .runId(loadDto.getRunId())
+            .fileContent(finalResult.toString().getBytes())
+            .build();
+}
