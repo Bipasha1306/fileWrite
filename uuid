@@ -12,3 +12,24 @@ public LoadDto insertLoad(String queryName) {
             .build();
     return loadService.insertLoad(loadEntity);
 }
+
+change 2-------------
+
+List<DataChangeAlertEntity> notificationDetailsList = dataChangeAlertRepository.findAllByIsProcessedAndSourceSystemAndEntityName(
+    "N", "panda", entityName);
+
+// Initialize or retrieve the existing list from the result map
+List<String> filters = (List<String>) result.computeIfAbsent(filterColumn, k -> new ArrayList<>());
+
+// Process notification details and add to the filters list
+for (DataChangeAlertEntity notificationDetails : notificationDetailsList) {
+    try {
+        // Since the query already filters out processed records, no need for further checking
+        processNotificationDetails(notificationDetails, filterColumn, filters);
+        log.info("Processing NotificationDetails with isProcessed = N");
+        
+    } catch (JsonProcessingException e) {
+        log.error("Error processing NotificationDetails", e);
+    }
+}
+
