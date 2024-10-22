@@ -1,0 +1,14 @@
+import java.util.UUID;
+
+public LoadDto insertLoad(String queryName) {
+    LoadEntity loadEntity = LoadEntity.builder()
+            .runId(CommonUtil.createUUID())
+            .loadCd(queryName)
+            .loadId(UUID.randomUUID().getLeastSignificantBits() & Long.MAX_VALUE) // Generate unique ID
+            .type(DataLoadTypes.PANDA_ALERTS)
+            .transformingStatus(DataLoadTransformingStatuses.WAITING)
+            .fromDt(new Date())
+            .toDt(new Date())
+            .build();
+    return loadService.insertLoad(loadEntity);
+}
