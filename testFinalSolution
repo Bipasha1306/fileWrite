@@ -58,7 +58,7 @@ public class DataChangeAlertProcessingServiceTest {
         entity1 = new DataChangeAlertEntity();
         entity1.setEntityName("AccountTest");
         entity1.setIsProcessed("N");
-        entity1.setKeysAsMap(Collections.singletonMap("account_id", "1234"));
+         Map<String, String> keysAsMap = Collections.singletonMap("account_id", "1234");
     }
 
     @Test
