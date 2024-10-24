@@ -7,11 +7,13 @@
         );
 
         queryName = "accountTest";
-        loadDto = mock(LoadDto.class);
+        loadDto = new LoadDto();
         loadDto.setRunId(UUID.randomUUID().toString());
-        radixQueryProperties = mock(DataChangeAlertRadixProperties.RadixQueryProperties.class);
-        eventTypeMap = Collections.singletonMap("15212", "Insert");
-        entityAndFilterColumn = Collections.singletonMap("AccountTest", "account_id");
+        radixQueryProperties = new DataChangeAlertRadixProperties.RadixQueryProperties();
+        eventTypeMap = new LinkedHashMap<>();
+        eventTypeMap.put("15212", "Insert");
+        entityAndFilterColumn = new LinkedHashMap<>();
+        entityAndFilterColumn.put("AccountTest", "account_id");
 
         entity1 = new DataChangeAlertEntity();
         entity1.setEntityName("AccountTest");
