@@ -79,7 +79,7 @@ public class DataChangeAlertProcessingServiceTest {
         // Arrange
         when(loadService.insertLoad(any(LoadEntity.class))).thenReturn(loadDto);
         when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName)).thenReturn(Optional.of(radixQueryProperties));
-        when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(new HashMap<>());
+        when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(new HashMap<String, String>());
 
         // Act
         DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
@@ -104,16 +104,6 @@ public class DataChangeAlertProcessingServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(loadDto.getRunId(), result.getRunId());
-    } } } }");
-        when(dataChangeAlertBaseServiceImpl.getRadixResponse(any(), any())).thenReturn(ResponseEntity.ok(new GraphqlResponse()));
-
-        // Act
-        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(loadDto.getRunId(), result.getRunId());
-        assertNotNull(result.getFileContent());
     }
 
     @Test
@@ -194,7 +184,7 @@ public class DataChangeAlertProcessingServiceTest {
         StringWriter stringWriter = new StringWriter();
         List<String> keys = Arrays.asList("accountId", "code");
         eventTypeMap.put("15212", "DELETE");
-        Map<String, Boolean> accountsFound = new HashMap<>();
+        Map<String, Boolean> accountsFound = new HashMap<String, Boolean>();
         accountsFound.put("15212", false);
 
         // Act
