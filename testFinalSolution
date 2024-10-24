@@ -1,4 +1,46 @@
-@BeforeEach
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class DataChangeAlertProcessingServiceTest {
+
+    @Mock
+    private DataChangeAlertRepository dataChangeAlertRepository;
+
+    @Mock
+    private DataChangeAlertBaseServiceImpl dataChangeAlertBaseServiceImpl;
+
+    @Mock
+    private LoadService loadService;
+
+    @InjectMocks
+    private DataChangeAlertProcessingService dataChangeAlertProcessingService;
+
+    @Value("${data-change-alert.batch-size}")
+    private int batchSize;
+
+    private LoadDto loadDto;
+    private DataChangeAlertRadixProperties.RadixQueryProperties radixQueryProperties;
+    private String queryName;
+    private Map<String, String> eventTypeMap;
+    private Map<String, String> entityAndFilterColumn;
+    private DataChangeAlertEntity entity1;
+
+    @BeforeEach
     void setUp() {
         dataChangeAlertProcessingService = new DataChangeAlertProcessingService(
                 dataChangeAlertRepository,
@@ -19,7 +61,6 @@
         entity1.setEntityName("AccountTest");
         entity1.setIsProcessed("N");
         entity1.setEventId(1234L);
-    }
     }
 
     @Test
@@ -43,7 +84,7 @@
         when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(new HashMap<>());
 
         // Act
-        var result = dataChangeAlertProcessingService.incrementalLoad(queryName);
+        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
 
         // Assert
         verify(loadService, times(1)).updateTransformingStatusByRunId(loadDto.getRunId(), DataLoadTransformingStatuses.COMPLETED);
@@ -87,11 +128,11 @@
     @Test
     void testCreateSubLists() {
         // Arrange
-        List<String> $1 = Arrays.asList($2);
+        List<String> list = Arrays.asList("item1", "item2", "item3", "item4");
         int batchSize = 2;
 
         // Act
-        List<List<String>> $1 = dataChangeAlertProcessingService.createSubLists($2);
+        List<List<String>> sublists = dataChangeAlertProcessingService.createSubLists(list, batchSize);
 
         // Assert
         assertEquals(2, sublists.size());
@@ -115,12 +156,12 @@
     void testStoreDataInTXT() throws IOException {
         // Arrange
         String jsonResponse = "{\"data\":{\"account\":{\"edges\":[{\"node\":{\"accountId\":15212,\"code\":\"533466\"}}]}}}";
-        var keys = Arrays.asList("accountId", "code");
+        List<String> keys = Arrays.asList("accountId", "code");
         String currentFilter = "accountId";
         boolean writeHeaders = true;
 
         // Act
-        String $1 = dataChangeAlertProcessingService.storeDataInTXT($2);
+        String result = dataChangeAlertProcessingService.storeDataInTXT(jsonResponse, keys, eventTypeMap, loadDto, queryName, currentFilter, writeHeaders);
 
         // Assert
         assertNotNull(result);
@@ -136,7 +177,7 @@
                 .thenReturn(Collections.singletonList(entity1));
 
         // Act
-        Map<String, Object> $1 = dataChangeAlertProcessingService.getFilters($2);
+        Map<String, Object> filters = dataChangeAlertProcessingService.getFilters(entityAndFilterColumn);
 
         // Assert
         assertNotNull(filters);
@@ -147,9 +188,9 @@
     @Test
     void testAddHardDelete() throws IOException {
         // Arrange
-        StringWriter $1 = new StringWriter();
+        StringWriter stringWriter = new StringWriter();
         List<String> keys = Arrays.asList("accountId", "code");
-        Map<String, String> $1 = Collections.singletonMap($2);
+        Map<String, Boolean> accountsFound = Collections.singletonMap("15212", false);
 
         // Act
         dataChangeAlertProcessingService.addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
