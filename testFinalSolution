@@ -166,20 +166,19 @@ public class DataChangeAlertProcessingServiceTest {
     }
 
     @Test
-    void testGetFilters() {
-        // Arrange
-        when(dataChangeAlertRepository.findAllByIsProcessedAndEntityName("N", "AccountTest"))
-                .thenReturn(Collections.singletonList(entity1));
-        entity1.setKeysAsMap(Collections.singletonMap("account_id", "1234"));
+void testGetFilters() {
+    // Arrange
+    when(dataChangeAlertRepository.findAllByIsProcessedAndEntityName("N", "AccountTest"))
+            .thenReturn(Collections.singletonList(entity1));
 
-        // Act
-        Map<String, Object> filters = dataChangeAlertProcessingService.getFilters(entityAndFilterColumn);
+    // Act
+    Map<String, Object> filters = dataChangeAlertProcessingService.getFilters(entityAndFilterColumn);
 
-        // Assert
-        assertNotNull(filters);
-        assertTrue(filters.containsKey("account_id"));
-        assertEquals(Collections.singletonList("1234"), filters.get("account_id"));
-    }
+    // Assert
+    assertNotNull(filters);
+    assertTrue(filters.containsKey("account_id"));
+    assertEquals(Collections.singletonList("1234"), filters.get("account_id"));
+}
 
     @Test
     void testAddHardDelete() throws IOException {
