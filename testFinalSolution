@@ -78,9 +78,7 @@ public class DataChangeAlertProcessingServiceTest {
     void testEventTypeMapEmpty() throws BusinessException {
         // Arrange
         when(loadService.insertLoad(any(LoadEntity.class))).thenReturn(loadDto);
-        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName))
-                .thenReturn(Optional.of(new DataChangeAlertRadixProperties.RadixQueryProperties()));
-        when(dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(new HashMap<>());
+        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName)).thenReturn(Optional.of(radixQueryProperties));
         when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(new HashMap<>());
 
         // Act
@@ -98,10 +96,15 @@ public class DataChangeAlertProcessingServiceTest {
         // Arrange
         when(loadService.insertLoad(any(LoadEntity.class))).thenReturn(loadDto);
         when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName)).thenReturn(Optional.of(radixQueryProperties));
-        when(dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(entityAndFilterColumn);
-        when(dataChangeAlertProcessingService.getFilters(any())).thenReturn(Collections.singletonMap("account_id", Arrays.asList(1234, 3456)));
         when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(eventTypeMap);
-        when(radixQueryProperties.getRadixQuery()).thenReturn("{ account(id: [15212]) { edges { node { accountId } } } }");
+
+        // Act
+        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(loadDto.getRunId(), result.getRunId());
+    } } } }");
         when(dataChangeAlertBaseServiceImpl.getRadixResponse(any(), any())).thenReturn(ResponseEntity.ok(new GraphqlResponse()));
 
         // Act
