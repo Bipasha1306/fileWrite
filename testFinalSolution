@@ -1,0 +1,200 @@
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+
+import java.io.StringWriter;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class DataChangeAlertProcessingServiceTest {
+
+    @Mock
+    private DataChangeAlertRepository dataChangeAlertRepository;
+
+    @Mock
+    private DataChangeAlertBaseServiceImpl dataChangeAlertBaseServiceImpl;
+
+    @Mock
+    private LoadService loadService;
+
+    @InjectMocks
+    private DataChangeAlertProcessingService dataChangeAlertProcessingService;
+
+    @Value("${data-change-alert.batch-size}")
+    private int batchSize;
+
+    private LoadDto loadDto;
+    private DataChangeAlertRadixProperties.RadixQueryProperties radixQueryProperties;
+    private String queryName;
+    private Map<String, String> eventTypeMap;
+    private Map<String, String> entityAndFilterColumn;
+    private DataChangeAlertEntity entity1;
+
+    @BeforeEach
+    void setUp() {
+        dataChangeAlertProcessingService = new DataChangeAlertProcessingService(
+                dataChangeAlertRepository,
+                dataChangeAlertBaseServiceImpl,
+                loadService
+        );
+
+        queryName = "accountTest";
+        loadDto = new LoadDto();
+        loadDto.setRunId(UUID.randomUUID().toString());
+        radixQueryProperties = mock(DataChangeAlertRadixProperties.RadixQueryProperties.class);
+        eventTypeMap = Collections.singletonMap("15212", "Insert");
+        entityAndFilterColumn = Collections.singletonMap("AccountTest", "account_id");
+
+        entity1 = new DataChangeAlertEntity();
+        entity1.setEntityName("AccountTest");
+        entity1.setIsProcessed("N");
+        entity1.setKeysAsMap(Collections.singletonMap("account_id", "1234"));
+    }
+
+    @Test
+    void testRadixQueryPropertiesEmpty() {
+        // Arrange
+        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(BusinessException.class, () -> {
+            dataChangeAlertProcessingService.incrementalLoad(queryName);
+        });
+    }
+
+    @Test
+    void testEventTypeMapEmpty() throws BusinessException {
+        // Arrange
+        when(loadService.insertLoad(any(LoadEntity.class))).thenReturn(loadDto);
+        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName))
+                .thenReturn(Optional.of(new DataChangeAlertRadixProperties.RadixQueryProperties()));
+        when(dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(new HashMap<>());
+        when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(new HashMap<>());
+
+        // Act
+        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
+
+        // Assert
+        verify(loadService, times(1)).updateTransformingStatusByRunId(loadDto.getRunId(), DataLoadTransformingStatuses.COMPLETED);
+        assertNotNull(result);
+        assertEquals(loadDto.getRunId(), result.getRunId());
+        assertNull(result.getFileContent());
+    }
+
+    @Test
+    void testEventTypeMapNotEmpty() throws BusinessException {
+        // Arrange
+        when(loadService.insertLoad(any(LoadEntity.class))).thenReturn(loadDto);
+        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(queryName)).thenReturn(Optional.of(radixQueryProperties));
+        when(dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(entityAndFilterColumn);
+        when(dataChangeAlertProcessingService.getFilters(any())).thenReturn(Collections.singletonMap("account_id", Arrays.asList(1234, 3456)));
+        when(dataChangeAlertProcessingService.getEventTypeMap()).thenReturn(eventTypeMap);
+        when(radixQueryProperties.getRadixQuery()).thenReturn("{ account(id: [15212]) { edges { node { accountId } } } }");
+        when(dataChangeAlertBaseServiceImpl.getRadixResponse(any(), any())).thenReturn(ResponseEntity.ok(new GraphqlResponse()));
+
+        // Act
+        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(loadDto.getRunId(), result.getRunId());
+        assertNotNull(result.getFileContent());
+    }
+
+    @Test
+    void testExtractOperationName() {
+        // Arrange
+        String query = "query accountTest { account(id: [15212]) { edges { node { accountId } } } }";
+
+        // Act
+        String operationName = dataChangeAlertProcessingService.extractOperationName(query);
+
+        // Assert
+        assertEquals("accountTest", operationName);
+    }
+
+    @Test
+    void testCreateSubLists() {
+        // Arrange
+        List<String> list = Arrays.asList("item1", "item2", "item3", "item4");
+        int batchSize = 2;
+
+        // Act
+        List<List<String>> sublists = dataChangeAlertProcessingService.createSubLists(list, batchSize);
+
+        // Assert
+        assertEquals(2, sublists.size());
+        assertEquals(Arrays.asList("item1", "item2"), sublists.get(0));
+        assertEquals(Arrays.asList("item3", "item4"), sublists.get(1));
+    }
+
+    @Test
+    void testToCamelCase() {
+        // Arrange
+        String filter = "account_id";
+
+        // Act
+        String result = dataChangeAlertProcessingService.toCamelCase(filter);
+
+        // Assert
+        assertEquals("accountId", result);
+    }
+
+    @Test
+    void testStoreDataInTXT() throws IOException {
+        // Arrange
+        String jsonResponse = "{\"data\":{\"account\":{\"edges\":[{\"node\":{\"accountId\":15212,\"code\":\"533466\"}}]}}}";
+        List<String> keys = Arrays.asList("accountId", "code");
+        String currentFilter = "accountId";
+        boolean writeHeaders = true;
+
+        // Act
+        String result = dataChangeAlertProcessingService.storeDataInTXT(jsonResponse, keys, eventTypeMap, loadDto, queryName, currentFilter, writeHeaders);
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.contains("accountId"));
+        assertTrue(result.contains("code"));
+        assertTrue(result.contains("Insert"));
+    }
+
+    @Test
+    void testGetFilters() {
+        // Arrange
+        when(dataChangeAlertRepository.findAllByIsProcessedAndEntityName("N", "AccountTest"))
+                .thenReturn(Collections.singletonList(entity1));
+
+        // Act
+        Map<String, Object> filters = dataChangeAlertProcessingService.getFilters(entityAndFilterColumn);
+
+        // Assert
+        assertNotNull(filters);
+        assertTrue(filters.containsKey("account_id"));
+        assertEquals(Collections.singletonList("1234"), filters.get("account_id"));
+    }
+
+    @Test
+    void testAddHardDelete() throws IOException {
+        // Arrange
+        StringWriter stringWriter = new StringWriter();
+        List<String> keys = Arrays.asList("accountId", "code");
+        Map<String, Boolean> accountsFound = Collections.singletonMap("15212", false);
+
+        // Act
+        dataChangeAlertProcessingService.addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
+
+        // Assert
+        String result = stringWriter.toString();
+        assertTrue(result.contains("Hard Delete"));
+    }
+}
