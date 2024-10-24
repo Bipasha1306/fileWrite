@@ -61,6 +61,8 @@ public class DataChangeAlertProcessingServiceTest {
         entity1.setEntityName("AccountTest");
         entity1.setIsProcessed("N");
         entity1.setEventId(1234L);
+        entity1.setNotification("TestNotification");
+        entity1.setQueryId(1L);
     }
 
     @Test
@@ -175,7 +177,7 @@ public class DataChangeAlertProcessingServiceTest {
         // Assert
         assertNotNull(filters);
         assertTrue(filters.containsKey("account_id"));
-        assertEquals(Collections.singletonList("1234"), filters.get("account_id"));
+        assertEquals(Collections.singletonList(entity1.getEventId().toString()), filters.get("account_id"));
     }
 
     @Test
