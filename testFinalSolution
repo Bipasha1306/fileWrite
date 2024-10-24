@@ -193,7 +193,9 @@ public class DataChangeAlertProcessingServiceTest {
         // Arrange
         StringWriter stringWriter = new StringWriter();
         List<String> keys = Arrays.asList("accountId", "code");
-        Map<String, Boolean> accountsFound = Collections.singletonMap("15212", false);
+        eventTypeMap.put("15212", "DELETE");
+        Map<String, Boolean> accountsFound = new HashMap<>();
+        accountsFound.put("15212", false);
 
         // Act
         dataChangeAlertProcessingService.addHardDelete(stringWriter, keys, eventTypeMap, accountsFound);
