@@ -1,46 +1,4 @@
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-
-import java.io.StringWriter;
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-public class DataChangeAlertProcessingServiceTest {
-
-    @Mock
-    private DataChangeAlertRepository dataChangeAlertRepository;
-
-    @Mock
-    private DataChangeAlertBaseServiceImpl dataChangeAlertBaseServiceImpl;
-
-    @Mock
-    private LoadService loadService;
-
-    @InjectMocks
-    private DataChangeAlertProcessingService dataChangeAlertProcessingService;
-
-    @Value("${data-change-alert.batch-size}")
-    private int batchSize;
-
-    private LoadDto loadDto;
-    private DataChangeAlertRadixProperties.RadixQueryProperties radixQueryProperties;
-    private String queryName;
-    private Map<String, String> eventTypeMap;
-    private Map<String, String> entityAndFilterColumn;
-    private DataChangeAlertEntity entity1;
-
-    @BeforeEach
+@BeforeEach
     void setUp() {
         dataChangeAlertProcessingService = new DataChangeAlertProcessingService(
                 dataChangeAlertRepository,
@@ -49,7 +7,7 @@ public class DataChangeAlertProcessingServiceTest {
         );
 
         queryName = "accountTest";
-        loadDto = new LoadDto();
+        loadDto = mock(LoadDto.class);
         loadDto.setRunId(UUID.randomUUID().toString());
         radixQueryProperties = mock(DataChangeAlertRadixProperties.RadixQueryProperties.class);
         eventTypeMap = Collections.singletonMap("15212", "Insert");
@@ -58,7 +16,8 @@ public class DataChangeAlertProcessingServiceTest {
         entity1 = new DataChangeAlertEntity();
         entity1.setEntityName("AccountTest");
         entity1.setIsProcessed("N");
-         Map<String, String> keysAsMap = Collections.singletonMap("account_id", "1234");
+        entity1.setEventId(1234L);
+    }
     }
 
     @Test
