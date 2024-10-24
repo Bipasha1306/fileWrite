@@ -170,6 +170,7 @@ public class DataChangeAlertProcessingServiceTest {
         // Arrange
         when(dataChangeAlertRepository.findAllByIsProcessedAndEntityName("N", "AccountTest"))
                 .thenReturn(Collections.singletonList(entity1));
+        entity1.setKeysAsMap(Collections.singletonMap("account_id", "1234"));
 
         // Act
         Map<String, Object> filters = dataChangeAlertProcessingService.getFilters(entityAndFilterColumn);
@@ -177,7 +178,7 @@ public class DataChangeAlertProcessingServiceTest {
         // Assert
         assertNotNull(filters);
         assertTrue(filters.containsKey("account_id"));
-        assertEquals(Collections.singletonList(entity1.getEventId().toString()), filters.get("account_id"));
+        assertEquals(Collections.singletonList("1234"), filters.get("account_id"));
     }
 
     @Test
