@@ -5,6 +5,7 @@ void testProcessSublists() throws Exception {
         Arrays.asList("15212", "15213"),
         Arrays.asList("15214", "15215")
     );
+
     Map<String, String> eventTypeMap = new HashMap<>();
     eventTypeMap.put("15212", "Insert");
     eventTypeMap.put("15213", "Update");
