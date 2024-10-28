@@ -1,0 +1,42 @@
+@Test
+void testProcessSublists() throws Exception {
+    // Arrange
+    List<List<String>> sublists = Arrays.asList(
+        Arrays.asList("15212", "15213"),
+        Arrays.asList("15214", "15215")
+    );
+    Map<String, String> eventTypeMap = new HashMap<>();
+    eventTypeMap.put("15212", "Insert");
+    eventTypeMap.put("15213", "Update");
+
+    String filterKey = "accountId";
+    String currentFilter = "accountId";
+
+    // Simulate the response body as a Map
+    Map<String, Object> responseBody = Map.of(
+        "data", Map.of(
+            "account", List.of(
+                Map.of("accountId", "15212", "code", "533466")
+            )
+        )
+    );
+
+    // Mock the response to return a valid ResponseEntity
+    ResponseEntity<Map<String, Object>> responseEntity = ResponseEntity.ok(responseBody);
+    when(dataChangeAlertBaseServiceImpl.getRadixResponse(anyString(), anyMap()))
+        .thenReturn(responseEntity);
+
+    // Act
+    StringBuilder result = dataChangeAlertProcessingService.processSublists(
+        sublists, eventTypeMap, filterKey, 
+        radixQueryProperties, loadDto, currentFilter
+    );
+
+    // Assert
+    assertNotNull(result, "The result should not be null");
+    assertTrue(result.length() > 0, "The result length should be greater than 0");
+
+    // Verify interactions
+    verify(dataChangeAlertBaseServiceImpl, times(sublists.size()))
+        .getRadixResponse(anyString(), anyMap());
+}
