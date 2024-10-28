@@ -25,7 +25,7 @@ void testProcessSublists() throws Exception {
     // Mock the response to return a valid ResponseEntity
     ResponseEntity<Map<String, Object>> responseEntity = ResponseEntity.ok(responseBody);
     when(dataChangeAlertBaseServiceImpl.getRadixResponse(anyString(), anyMap()))
-        .thenReturn(responseEntity);
+        .thenReturn(responseEntity);  // Ensure the types align here
 
     // Act
     StringBuilder result = dataChangeAlertProcessingService.processSublists(
