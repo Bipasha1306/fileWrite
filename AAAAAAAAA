@@ -73,3 +73,13 @@ The code is now ready for production and has proven to be stable in UAT.
 Fusion Production Support: Supported production needs, ensured minimal downtime, and provided consistent resolution of production issues.
 GOS Database Changes: Implemented changes for the GOS database and made necessary changes in the server to bring it up when issues occurred.
 AWS Elastic KT: Gained key knowledge on AWS Elastic from a former teammate to support future project scalability and infrastructure efficiency.
+
+
+
+//////////////////////////////////
+
+Year-End Performance Goal: FDS Changes and Fusion UI Support
+
+Supported testing efforts for FDS changes by analyzing requirements, identifying issues, and designing test cases. Collaborated with Panda/Radix teams, even during late evenings, to understand complexities and raise issues as needed, ensuring all changes were thoroughly tested. Added test cases for new features, bug fixes, and enhancements. This approach maintained system stability, reduced production issues, and ensured high-quality deliverables. Provided feedback to developers, contributing to continuous improvements in FDS.
+
+Provided production support for Fusion UI, helping resolve issues and minimizing downtime whenever they occurred. Ensured that production systems were restored promptly, contributing to the reliability and availability of Fusion UI for end users.
