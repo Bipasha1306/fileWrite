@@ -71,5 +71,5 @@ The code is now ready for production and has proven to be stable in UAT.
 
 ////////
 Fusion Production Support: Supported production needs, ensured minimal downtime, and provided consistent resolution of production issues.
-GOS Database Changes: Implemented changes in GOS databases, ensuring data consistency and system stability across different domains.
+GOS Database Changes: Implemented changes for the GOS database and made necessary changes in the server to bring it up when issues occurred.
 AWS Elastic KT: Gained key knowledge on AWS Elastic from a former teammate to support future project scalability and infrastructure efficiency.
