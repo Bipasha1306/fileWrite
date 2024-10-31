@@ -27,6 +27,18 @@ Managed the complexity of PandaAccountService, which involved handling 18 comple
 
 Supported continuous testing and promptly resolved issues as they arose.
 
+/////////////////////////////////
+
+Teamwork and Leadership
+
+Participated in hackathons and AI training initiatives, working closely with peers to foster a culture of innovation and continuous learning.
+
+Actively contributed to knowledge transfer (KT) sessions by sharing insights and technical skills with the team, even during times when I was on leave or dealing with health issues, to ensure minimal dependency.
+
+Worked effectively with peers across different locations to implement code changes, ensuring smooth integration and development despite challenges.
+
+Encouraged a collaborative environment by supporting peers during critical projects and providing constructive feedback, helping to improve team efficiency and cohesion.
+
 Implemented both Kafka messaging logic and notification logic, effectively managing these two major components of the codebase.
 
 Adapted to changing requirements by adding necessary test cases when we needed to urgently deploy the Kafka part, despite the evolving codebase.
