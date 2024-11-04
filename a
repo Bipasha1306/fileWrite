@@ -2,21 +2,23 @@
 public LoadDto insertLoad(String queryName) {
     LoadEntity loadEntity = LoadEntity.builder()
         .runId(CommonUtil.createUUID())
-        .loadCd(queryName)  // Set the loadCd directly from the queryName
-        .loadId(1235L) // event-Id from the kafka alert
+        .loadCd(queryName)
+        .loadId(1235L) // Ensure this is unique
         .type(DataLoadTypes.PANDA_ALERTS)
         .transformingStatus(DataLoadTransformingStatuses.WAITING)
         .fromDt(new Date())
         .toDt(new Date())
         .build();
 
-    entityManager.persist(loadEntity);
-    entityManager.flush(); // Ensure it's saved immediately
+    // Save the entity using the repository
+    LoadEntity savedEntity = loadRepository.save(loadEntity); // This should persist the entity
 
-    // Construct LoadDto directly from loadEntity
+    log.info("Saved LoadEntity with ID: {}", savedEntity.getRunId()); // Log success
+
+    // Return the DTO constructed from the saved entity
     return LoadDto.builder()
-        .runId(loadEntity.getRunId())
-        .loadCd(loadEntity.getLoadCd()) // Ensure this getter is present in LoadEntity
-        .loadId(loadEntity.getLoadId())
+        .runId(savedEntity.getRunId())
+        .loadCd(savedEntity.getLoadCd())
+        .loadId(savedEntity.getLoadId())
         .build();
 }
