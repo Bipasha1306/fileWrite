@@ -1,0 +1,24 @@
+@Transactional
+public LoadDto insertLoad(String queryName) {
+    LoadEntity loadEntity = LoadEntity.builder()
+        .runId(CommonUtil.createUUID())
+        .loadCd(queryName)
+        .loadId(1235L) // event-Id from the kafka alert
+        .type(DataLoadTypes.PANDA_ALERTS)
+        .transformingStatus(DataLoadTransformingStatuses.WAITING)
+        .fromDt(new Date())
+        .toDt(new Date())
+        .build();
+
+    entityManager.persist(loadEntity); // Persist the entity
+    entityManager.flush(); // Ensure the entity is written to the DB
+
+    // Create LoadDto based on the persisted LoadEntity
+    LoadDto savedLoadDto = LoadDto.builder()
+        .runId(loadEntity.getRunId())
+        .loadCd(loadEntity.getLoadCd())
+        .loadId(loadEntity.getLoadId())
+        .build();
+
+    return savedLoadDto; // Return the DTO
+}
