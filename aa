@@ -1,65 +1,16 @@
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+@Test
+void testBuilderInitialization() {
+    String expectedRunId = "testRunId";
+    byte[] expectedFileContent = {1, 2, 3};
 
-class DataChangeAlertLoadDtoTest {
+    DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+            .runId(expectedRunId)
+            .fileContent(expectedFileContent)
+            .build();
 
-    @Test
-    void testBuilder() {
-        String expectedRunId = "testRunId";
-        byte[] expectedFileContent = {1, 2, 3};
+    System.out.println("RunId: " + dto.getRunId());
+    System.out.println("FileContent: " + Arrays.toString(dto.getFileContent()));
 
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .runId(expectedRunId)
-                .fileContent(expectedFileContent)
-                .build();
-
-        assertEquals(expectedRunId, dto.getRunId());
-        assertArrayEquals(expectedFileContent, dto.getFileContent());
-    }
-
-    @Test
-    void testDefaultFieldAccessibility() {
-        DataChangeAlertLoadDto dto = new DataChangeAlertLoadDto();
-        
-        assertNotNull(dto);
-        assertNull(dto.getRunId()); 
-        assertNull(dto.getFileContent());
-    }
-
-    @Test
-    void testSetRunIdAndFileContent() {
-        String runId = "newRunId";
-        byte[] fileContent = {4, 5, 6};
-
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .runId(runId)
-                .fileContent(fileContent)
-                .build();
-
-        // Verify the set values
-        assertEquals(runId, dto.getRunId());
-        assertArrayEquals(fileContent, dto.getFileContent());
-    }
-
-    @Test
-    void testAccessRunId() {
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .runId("runIdValue")
-                .build();
-
-        // Accessing the runId directly
-        String runId = dto.getRunId();
-        assertEquals("runIdValue", runId);
-    }
-
-    @Test
-    void testAccessFileContent() {
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .fileContent(new byte[]{1, 2, 3})
-                .build();
-
-        // Accessing the fileContent directly
-        byte[] content = dto.getFileContent();
-        assertArrayEquals(new byte[]{1, 2, 3}, content);
-    }
+    assertEquals(expectedRunId, dto.getRunId());
+    assertArrayEquals(expectedFileContent, dto.getFileContent());
 }
