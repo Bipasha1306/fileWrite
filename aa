@@ -12,5 +12,11 @@ base64_string=$(base64 temp.bin)
 # Output the Base64 encoded string
 echo "Base64 Encoded String: $base64_string"
 
+# Decode the Base64 string back to original form and output
+decoded_string=$(echo "$base64_string" | base64 -d)
+
+# Output the decoded string
+echo "Decoded String: $decoded_string"
+
 # Clean up the temporary file
 rm temp.bin
