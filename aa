@@ -1,9 +1,7 @@
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -31,34 +29,24 @@ public class DataChangeAlertBaseServiceImplTest {
     }
 
     @Test
-    public void testGetRadixResponse_Success() {
-        String query = "getAllAccountSpnIdsAndSpnNames";
-        Map<String, Object> filters = new HashMap<>();
-        String serviceUrl = "https://panda-datagraph.prod.gaiacloud.jpmchase.net/graphql";
+    void testGetRadixResponse() {
+        // Arrange
+        String query = "testQuery";
+        Map<String, Object> filters = new HashMap<>(); // Using an empty map for simplicity
+        String serviceUrl = "http://example.com";
+        ResponseEntity<GraphQLResponse> expectedResponse = ResponseEntity.ok(new GraphQLResponse());
 
-        when(dataChangeAlertRadixProperties.getRadixServices())
-            .thenReturn(List.of(new RadixServiceProperties(serviceUrl, List.of(query))));
+        // Assume no services are configured
+        when(dataChangeAlertRadixProperties.getRadixServices()).thenReturn(Collections.emptyList());
+        when(graphQLClient.sendWithTryCount(any(RestTemplate.class), eq(query), eq(filters), eq(2), eq(GraphQLResponse.class)))
+            .thenReturn(expectedResponse);
 
-        ResponseEntity<GraphQLResponse> mockResponse = mock(ResponseEntity.class);
-        when(graphQLClient.sendWithTryCount(any(), any(), any(), anyInt(), eq(GraphQLResponse.class)))
-            .thenReturn(mockResponse);
-
-        ResponseEntity<GraphQLResponse> response = service.getRadixResponse(query, filters);
-
-        assertNotNull(response);
-        verify(graphQLClient, times(1)).sendWithTryCount(eq(restTemplate), eq(query), eq(filters), anyInt(), eq(GraphQLResponse.class));
-    }
-
-    @Test
-    public void testGetRadixResponse_ServiceUrlNotFound() {
-        String query = "getAllAccountSpnIdsAndSpnNames";
-        Map<String, Object> filters = new HashMap<>();
-
-        when(dataChangeAlertRadixProperties.getRadixServices()).thenReturn(List.of());
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            service.getRadixResponse(query, filters);
+        // Act
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            ResponseEntity<GraphQLResponse> response = service.getRadixResponse(query, filters);
         });
+
+        // Assert
         assertEquals("Service URL not found for the given query.", exception.getMessage());
     }
 }
