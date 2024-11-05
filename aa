@@ -1,10 +1,25 @@
-#!/bin/bash
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
-# Define the Base64 encoded string
-base64_string="YW5jb3V0c2VkIHRpbWVzdGFtcCBpcyBsb25nIHN0b3Jpbmc="
+class DataChangeAlertLoadDtoTest {
 
-# Decode the Base64 string
-decoded_output=$(echo "$base64_string" | base64 -d)
+    @Test
+    void testBuilder() {
+        String expectedRunId = "testRunId";
+        byte[] expectedFileContent = {1, 2, 3};
 
-# Display the decoded output
-echo "Decoded Output: $decoded_output"
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+                .runId(expectedRunId)
+                .fileContent(expectedFileContent)
+                .build();
+
+        assertEquals(expectedRunId, dto.getRunId());
+        assertArrayEquals(expectedFileContent, dto.getFileContent());
+    }
+
+    @Test
+    void testDefaultFieldAccessibility() {
+        DataChangeAlertLoadDto dto = new DataChangeAlertLoadDto();
+        assertNotNull(dto);
+    }
+}
