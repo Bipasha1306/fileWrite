@@ -1,16 +1,57 @@
-@Test
-void testBuilderInitialization() {
-    String expectedRunId = "testRunId";
-    byte[] expectedFileContent = {1, 2, 3};
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
-    DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-            .runId(expectedRunId)
-            .fileContent(expectedFileContent)
-            .build();
+class DataChangeAlertLoadDtoTest {
 
-    System.out.println("RunId: " + dto.getRunId());
-    System.out.println("FileContent: " + Arrays.toString(dto.getFileContent()));
+    @Test
+    void testBuilderInitialization() {
+        String expectedRunId = "testRunId";
+        byte[] expectedFileContent = {1, 2, 3};
 
-    assertEquals(expectedRunId, dto.getRunId());
-    assertArrayEquals(expectedFileContent, dto.getFileContent());
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+                .runId(expectedRunId)
+                .fileContent(expectedFileContent)
+                .build();
+
+        assertEquals(expectedRunId, dto.getRunId());
+        assertArrayEquals(expectedFileContent, dto.getFileContent());
+    }
+
+    @Test
+    void testDefaultValuesWithBuilder() {
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+                .build(); // Using builder without setting any fields
+
+        // Assert that the values are null when using the builder
+        assertNull(dto.getRunId());
+        assertNull(dto.getFileContent());
+    }
+
+    @Test
+    void testSetRunIdAndFileContent() {
+        String runId = "newRunId";
+        byte[] fileContent = {4, 5, 6};
+
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+                .runId(runId)
+                .fileContent(fileContent)
+                .build();
+
+        assertEquals(runId, dto.getRunId());
+        assertArrayEquals(fileContent, dto.getFileContent());
+    }
+
+    @Test
+    void testDifferentValuesWithBuilder() {
+        String runId = "anotherRunId";
+        byte[] fileContent = {7, 8, 9};
+
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+                .runId(runId)
+                .fileContent(fileContent)
+                .build();
+
+        assertEquals(runId, dto.getRunId());
+        assertArrayEquals(fileContent, dto.getFileContent());
+    }
 }
