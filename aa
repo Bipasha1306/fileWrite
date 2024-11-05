@@ -1,22 +1,10 @@
 #!/bin/bash
 
-# Hex string to convert
-hex_string="48656c6c6f20576f726c6421"
+# Define the Base64 encoded string
+base64_string="YW5jb3V0c2VkIHRpbWVzdGFtcCBpcyBsb25nIHN0b3Jpbmc="
 
-# Convert hex to binary and store in temp.bin
-echo "$hex_string" | xxd -r -p > temp.bin
+# Decode the Base64 string
+decoded_output=$(echo "$base64_string" | base64 -d)
 
-# Encode the binary file to Base64
-base64_string=$(base64 temp.bin)
-
-# Output the Base64 encoded string
-echo "Base64 Encoded String: $base64_string"
-
-# Decode the Base64 string back to original form and output
-decoded_string=$(echo "$base64_string" | base64 -d)
-
-# Output the decoded string
-echo "Decoded String: $decoded_string"
-
-# Clean up the temporary file
-rm temp.bin
+# Display the decoded output
+echo "Decoded Output: $decoded_output"
