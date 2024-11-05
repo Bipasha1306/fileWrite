@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Hex string to convert
+hex_string="48656c6c6f20576f726c6421"
+
+# Convert hex to binary and store in temp.bin
+echo "$hex_string" | xxd -r -p > temp.bin
+
+# Encode the binary file to Base64
+base64_string=$(base64 temp.bin)
+
+# Output the Base64 encoded string
+echo "Base64 Encoded String: $base64_string"
+
+# Clean up the temporary file
+rm temp.bin
