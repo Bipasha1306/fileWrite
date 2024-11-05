@@ -19,7 +19,25 @@ class DataChangeAlertLoadDtoTest {
 
     @Test
     void testDefaultFieldAccessibility() {
-        DataChangeAlertLoadDto dto = new DataChangeAlertLoadDto();
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder().build();
         assertNotNull(dto);
+        
+        // Ensure that fields are initialized correctly
+        assertNull(dto.getRunId()); // When using the builder, runId should be null initially
+        assertNull(dto.getFileContent()); // File content should also be null initially
+    }
+
+    @Test
+    void testSetRunIdAndFileContent() {
+        String runId = "newRunId";
+        byte[] fileContent = {4, 5, 6};
+
+        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
+                .runId(runId)
+                .fileContent(fileContent)
+                .build();
+
+        assertEquals(runId, dto.getRunId());
+        assertArrayEquals(fileContent, dto.getFileContent());
     }
 }
