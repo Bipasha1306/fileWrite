@@ -1,41 +1,64 @@
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.ResponseEntity;
 
-public class DataChangeAlertLoadDtoTest {
+public class DataChangeAlertBaseServiceImplTest {
 
-    @Test
-    void testBuilderSetsRunId() {
-        String expectedRunId = "12345";
+    @InjectMocks
+    private DataChangeAlertBaseServiceImpl service;
 
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .runId(expectedRunId)
-                .build();
+    @Mock
+    private GraphQLClient graphQLClient;
 
-        assertEquals(expectedRunId, dto.getRunId());
+    @Mock
+    private DataChangeAlertRadixProperties dataChangeAlertRadixProperties;
+
+    @Mock
+    private RestTemplate restTemplate;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    void testBuilderSetsFileContent() {
-        byte[] expectedFileContent = new byte[] {1, 2, 3, 4, 5};
+    public void testGetRadixResponse_Success() {
+        String query = "getAllAccountSpnIdsAndSpnNames";
+        Map<String, Object> filters = new HashMap<>();
+        String serviceUrl = "https://panda-datagraph.prod.gaiacloud.jpmchase.net/graphql";
 
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .fileContent(expectedFileContent)
-                .build();
+        when(dataChangeAlertRadixProperties.getRadixServices())
+            .thenReturn(List.of(new RadixServiceProperties(serviceUrl, List.of(query))));
 
-        assertArrayEquals(expectedFileContent, dto.getFileContent());
+        ResponseEntity<GraphQLResponse> mockResponse = mock(ResponseEntity.class);
+        when(graphQLClient.sendWithTryCount(any(), any(), any(), anyInt(), eq(GraphQLResponse.class)))
+            .thenReturn(mockResponse);
+
+        ResponseEntity<GraphQLResponse> response = service.getRadixResponse(query, filters);
+
+        assertNotNull(response);
+        verify(graphQLClient, times(1)).sendWithTryCount(eq(restTemplate), eq(query), eq(filters), anyInt(), eq(GraphQLResponse.class));
     }
 
     @Test
-    void testAllArgsConstructor() {
-        String runId = "67890";
-        byte[] fileContent = new byte[] {10, 20, 30};
+    public void testGetRadixResponse_ServiceUrlNotFound() {
+        String query = "getAllAccountSpnIdsAndSpnNames";
+        Map<String, Object> filters = new HashMap<>();
 
-        DataChangeAlertLoadDto dto = DataChangeAlertLoadDto.builder()
-                .runId(runId)
-                .fileContent(fileContent)
-                .build();
+        when(dataChangeAlertRadixProperties.getRadixServices()).thenReturn(List.of());
 
-        assertEquals(runId, dto.getRunId());
-        assertArrayEquals(fileContent, dto.getFileContent());
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            service.getRadixResponse(query, filters);
+        });
+        assertEquals("Service URL not found for the given query.", exception.getMessage());
     }
 }
