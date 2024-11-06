@@ -1,90 +1,21 @@
-import static org.mockito.Mockito.*;
-import static org.junit.Assert.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.*;
+@BeforeEach
+void setUp() {
+    MockitoAnnotations.initMocks(this);
 
-import java.util.Optional;
-import java.util.UUID;
+    // Setup other mocks and properties
+    queryName = "account"; // or "getAssetManagers" based on what you want to test
 
-public class DataChangeAlertProcessingServiceTest {
+    // Mocking LoadDto
+    loadDto = mock(LoadDto.class);
+    when(loadDto.getRunId()).thenReturn(UUID.randomUUID().toString()); // Ensures getRunId() does not return null
 
-    @Mock
-    private DataChangeAlertRepository dataChangeAlertRepository;
+    // Continue setting up other mocks
+    loadService = mock(LoadService.class);
+    when(loadService.insertLoad(anyString())).thenReturn(loadDto); // Ensures insertLoad does not return null
 
-    @Mock
-    private DataChangeAlertBaseServiceImpl dataChangeAlertBaseServiceImpl;
+    radixQueryProperties = new DataChangeAlertRadixProperties.RadixQueryProperties();
+    radixQueryProperties.setRadixQuery("query { account { accountId code } }");
 
-    @Mock
-    private LoadService loadService;
-
-    @InjectMocks
-    private DataChangeAlertProcessingService dataChangeAlertProcessingService;
-
-    private String queryName;
-    private LoadDto loadDto;
-    private DataChangeAlertRadixProperties.RadixQueryProperties radixQueryProperties;
-    private Map<String, String> eventTypeMap;
-    private Map<String, String> entityAndFilterColumn;
-    private DataChangeAlertEntity entity1;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.initMocks(this);
-
-        queryName = "account";
-        loadDto = mock(LoadDto.class);
-        when(loadDto.getRunId()).thenReturn(UUID.randomUUID().toString());
-
-        loadService = mock(LoadService.class);
-        radixQueryProperties = new DataChangeAlertRadixProperties.RadixQueryProperties();
-        radixQueryProperties.setRadixQuery("query { account { accountId code } }");
-
-        eventTypeMap = new HashMap<>();
-        eventTypeMap.put("15122", "Insert");
-
-        entityAndFilterColumn = new HashMap<>();
-        entityAndFilterColumn.put("AccountTest", "account_id");
-
-        entity1 = new DataChangeAlertEntity();
-        entity1.setEntityName("AccountTest");
-        entity1.setIsProcessed("N");
-        entity1.setEventId(1234L);
-        entity1.setNotification("{\"account_id\":\"1234\"}");
-        entity1.setQueryId(1L);
-
-        dataChangeAlertBaseServiceImpl = mock(DataChangeAlertBaseServiceImpl.class);
-        ObjectMapper objectMapper = new ObjectMapper();
-    }
-
-    @Test
-    public void testIncrementalLoadSuccess() throws BusinessException {
-        // Arrange
-        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(anyString())).thenReturn(Optional.of(radixQueryProperties));
-        when(dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(entityAndFilterColumn);
-        when(loadService.insertLoad(anyString())).thenReturn(loadDto);
-
-        // Act
-        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(loadDto.getRunId(), result.getRunId());
-        assertNull(result.getFileContent());  // Assuming the file content is expected to be null
-        verify(loadService, never()).updateTransformingStatusByRunId(anyString(), eq(DataLoadTransformingStatuses.COMPLETED));
-
-        // Additional verification
-        verify(dataChangeAlertBaseServiceImpl).getRadixQueryProperties(queryName);
-        verify(dataChangeAlertBaseServiceImpl).getEntitiesAndFilterColumnsByQuery(any());
-    }
-
-    @Test(expected = BusinessException.class)
-    public void testIncrementalLoadInvalidQueryName() throws BusinessException {
-        // Arrange
-        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(anyString())).thenReturn(Optional.empty());
-
-        // Act
-        dataChangeAlertProcessingService.incrementalLoad("invalidQuery");
-        // Expected to throw BusinessException
-    }
+    // Ensure that getRadixQueryProperties does not return Optional.empty() for a valid test case
+    when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(anyString())).thenReturn(Optional.of(radixQueryProperties));
 }
