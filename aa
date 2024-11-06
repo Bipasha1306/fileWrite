@@ -1,52 +1,48 @@
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.http.ResponseEntity;
-
-public class DataChangeAlertBaseServiceImplTest {
-
-    @InjectMocks
-    private DataChangeAlertBaseServiceImpl service;
-
-    @Mock
-    private GraphQLClient graphQLClient;
-
-    @Mock
-    private DataChangeAlertRadixProperties dataChangeAlertRadixProperties;
-
-    @Mock
-    private RestTemplate restTemplate;
-
-    @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
-
-    @Test
-    void testGetRadixResponse() {
+@Test
+    public void testIncrementalLoadSuccess() throws BusinessException {
         // Arrange
-        String query = "testQuery";
-        Map<String, Object> filters = new HashMap<>(); // Using an empty map for simplicity
-        String serviceUrl = "http://example.com";
-        ResponseEntity<GraphQLResponse> expectedResponse = ResponseEntity.ok(new GraphQLResponse());
+        String queryName = "testQuery";
+        Map<String, String> entityAndFilterColumn = new HashMap<>();
+        entityAndFilterColumn.put("AccountTest", "account_id");
 
-        // Assume no services are configured
-        when(dataChangeAlertRadixProperties.getRadixServices()).thenReturn(Collections.emptyList());
-        when(graphQLClient.sendWithTryCount(any(RestTemplate.class), eq(query), eq(filters), eq(2), eq(GraphQLResponse.class)))
-            .thenReturn(expectedResponse);
+        Map<String, String> globalEventTypeMap = new HashMap<>();
+        globalEventTypeMap.put("123456", "Update");
+
+        QueryEventMapDto queryEventMapDto = new QueryEventMapDto(queryName, globalEventTypeMap, Map.of("account_id", List.of("1234", "3456")));
+        
+        when(baseService.getRadixQueryProperties(queryName)).thenReturn(Optional.of(new DataChangeAlertRadixProperties.RadixQueryProperties()));
+        when(baseService.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(entityAndFilterColumn);
+        doReturn(queryEventMapDto).when(service).getFilters(entityAndFilterColumn, queryName);
+
+        LoadDto loadDto = new LoadDto("run123", null);
+        when(service.insertLoad(queryName)).thenReturn(loadDto);
+
+        StringBuilder finalResult = new StringBuilder("result");
+        doReturn(new StringBuilder("result")).when(service).processSubLists(anyList(), anyString(), any(), any(), anyString(), any());
 
         // Act
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            ResponseEntity<GraphQLResponse> response = service.getRadixResponse(query, filters);
-        });
+        DataChangeAlertLoadDto result = service.incrementalLoad(queryName);
 
         // Assert
-        assertEquals("Service URL not found for the given query.", exception.getMessage());
+        assertNotNull(result);
+        assertEquals("run123", result.getRunId());
+        assertNull(result.getFileContent());  // Expecting null because fileContent is set with null in the test arrangement
+        verify(loadService, never()).updateTransformingStatusByRunId(anyString(), any(DataLoadTransformingStatuses.class));
+
+        // Verifying method calls with specific arguments
+        verify(service).insertLoad(queryName);
+        verify(service).getFilters(entityAndFilterColumn, queryName);
+        verify(service).processSubLists(anyList(), anyString(), any(), any(), anyString(), any());
     }
-}
+
+    @Test(expected = BusinessException.class)
+    public void testIncrementalLoadInvalidQueryName() throws BusinessException {
+        // Arrange
+        String invalidQueryName = "invalidQuery";
+        when(baseService.getRadixQueryProperties(invalidQueryName)).thenReturn(Optional.empty());
+
+        // Act
+        service.incrementalLoad(invalidQueryName);
+
+        // This should throw a BusinessException due to invalid query name
+    }
