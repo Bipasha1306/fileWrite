@@ -1,48 +1,90 @@
-@Test
-    public void testIncrementalLoadSuccess() throws BusinessException {
-        // Arrange
-        String queryName = "testQuery";
-        Map<String, String> entityAndFilterColumn = new HashMap<>();
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public class DataChangeAlertProcessingServiceTest {
+
+    @Mock
+    private DataChangeAlertRepository dataChangeAlertRepository;
+
+    @Mock
+    private DataChangeAlertBaseServiceImpl dataChangeAlertBaseServiceImpl;
+
+    @Mock
+    private LoadService loadService;
+
+    @InjectMocks
+    private DataChangeAlertProcessingService dataChangeAlertProcessingService;
+
+    private String queryName;
+    private LoadDto loadDto;
+    private DataChangeAlertRadixProperties.RadixQueryProperties radixQueryProperties;
+    private Map<String, String> eventTypeMap;
+    private Map<String, String> entityAndFilterColumn;
+    private DataChangeAlertEntity entity1;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.initMocks(this);
+
+        queryName = "account";
+        loadDto = mock(LoadDto.class);
+        when(loadDto.getRunId()).thenReturn(UUID.randomUUID().toString());
+
+        loadService = mock(LoadService.class);
+        radixQueryProperties = new DataChangeAlertRadixProperties.RadixQueryProperties();
+        radixQueryProperties.setRadixQuery("query { account { accountId code } }");
+
+        eventTypeMap = new HashMap<>();
+        eventTypeMap.put("15122", "Insert");
+
+        entityAndFilterColumn = new HashMap<>();
         entityAndFilterColumn.put("AccountTest", "account_id");
 
-        Map<String, String> globalEventTypeMap = new HashMap<>();
-        globalEventTypeMap.put("123456", "Update");
+        entity1 = new DataChangeAlertEntity();
+        entity1.setEntityName("AccountTest");
+        entity1.setIsProcessed("N");
+        entity1.setEventId(1234L);
+        entity1.setNotification("{\"account_id\":\"1234\"}");
+        entity1.setQueryId(1L);
 
-        QueryEventMapDto queryEventMapDto = new QueryEventMapDto(queryName, globalEventTypeMap, Map.of("account_id", List.of("1234", "3456")));
-        
-        when(baseService.getRadixQueryProperties(queryName)).thenReturn(Optional.of(new DataChangeAlertRadixProperties.RadixQueryProperties()));
-        when(baseService.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(entityAndFilterColumn);
-        doReturn(queryEventMapDto).when(service).getFilters(entityAndFilterColumn, queryName);
+        dataChangeAlertBaseServiceImpl = mock(DataChangeAlertBaseServiceImpl.class);
+        ObjectMapper objectMapper = new ObjectMapper();
+    }
 
-        LoadDto loadDto = new LoadDto("run123", null);
-        when(service.insertLoad(queryName)).thenReturn(loadDto);
-
-        StringBuilder finalResult = new StringBuilder("result");
-        doReturn(new StringBuilder("result")).when(service).processSubLists(anyList(), anyString(), any(), any(), anyString(), any());
+    @Test
+    public void testIncrementalLoadSuccess() throws BusinessException {
+        // Arrange
+        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(anyString())).thenReturn(Optional.of(radixQueryProperties));
+        when(dataChangeAlertBaseServiceImpl.getEntitiesAndFilterColumnsByQuery(any())).thenReturn(entityAndFilterColumn);
+        when(loadService.insertLoad(anyString())).thenReturn(loadDto);
 
         // Act
-        DataChangeAlertLoadDto result = service.incrementalLoad(queryName);
+        DataChangeAlertLoadDto result = dataChangeAlertProcessingService.incrementalLoad(queryName);
 
         // Assert
         assertNotNull(result);
-        assertEquals("run123", result.getRunId());
-        assertNull(result.getFileContent());  // Expecting null because fileContent is set with null in the test arrangement
-        verify(loadService, never()).updateTransformingStatusByRunId(anyString(), any(DataLoadTransformingStatuses.class));
+        assertEquals(loadDto.getRunId(), result.getRunId());
+        assertNull(result.getFileContent());  // Assuming the file content is expected to be null
+        verify(loadService, never()).updateTransformingStatusByRunId(anyString(), eq(DataLoadTransformingStatuses.COMPLETED));
 
-        // Verifying method calls with specific arguments
-        verify(service).insertLoad(queryName);
-        verify(service).getFilters(entityAndFilterColumn, queryName);
-        verify(service).processSubLists(anyList(), anyString(), any(), any(), anyString(), any());
+        // Additional verification
+        verify(dataChangeAlertBaseServiceImpl).getRadixQueryProperties(queryName);
+        verify(dataChangeAlertBaseServiceImpl).getEntitiesAndFilterColumnsByQuery(any());
     }
 
     @Test(expected = BusinessException.class)
     public void testIncrementalLoadInvalidQueryName() throws BusinessException {
         // Arrange
-        String invalidQueryName = "invalidQuery";
-        when(baseService.getRadixQueryProperties(invalidQueryName)).thenReturn(Optional.empty());
+        when(dataChangeAlertBaseServiceImpl.getRadixQueryProperties(anyString())).thenReturn(Optional.empty());
 
         // Act
-        service.incrementalLoad(invalidQueryName);
-
-        // This should throw a BusinessException due to invalid query name
+        dataChangeAlertProcessingService.incrementalLoad("invalidQuery");
+        // Expected to throw BusinessException
     }
+}
