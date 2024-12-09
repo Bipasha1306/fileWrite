@@ -3,3 +3,8 @@ Just to note, points 4 and 5—validation of Radix responses and building flat d
 
 If there’s any further input or analysis required, please feel free to include me as well.
 
+
+Thank you for sharing and refactoring the code base I built for the feature. I’m glad the implementation is performing well.
+Just to clarify, points 4 and 5—validation of Radix responses and building flat data—were part of the original implementation. Regarding point 5, I notice there have been no changes in the service class, as it appears to remain as initially implemented.
+
+If there's any further input or analysis needed, feel free to loop me in.
